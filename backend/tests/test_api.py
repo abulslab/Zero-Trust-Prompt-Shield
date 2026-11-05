@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from conftest import gh_token, shield_with
@@ -139,3 +140,11 @@ def test_guard_blocks_exfiltration_in_the_answer() -> None:
 def test_benchmark_endpoint(shield: Shield) -> None:
     r = client(shield).post("/v1/benchmark").json()
     assert r["samples"] >= 40 and r["overall"]["recall"] >= 0.9 and r["overall"]["precision"] >= 0.9
+
+
+def test_empty_settings_values_fall_back_to_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Copying .env.example unchanged must start the service, not crash on empty values.
+    monkeypatch.setenv("SHIELD_AI_TIMEOUT_S", "")
+    monkeypatch.setenv("SHIELD_API_KEY", "")
+    s = Settings()
+    assert s.ai_timeout_s is None and not s.api_key

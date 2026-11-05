@@ -12,7 +12,9 @@ Provider = Literal["none", "gemini", "ollama", "anthropic", "openai"]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="SHIELD_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="SHIELD_", env_file=".env", env_file_encoding="utf-8", extra="ignore", env_ignore_empty=True
+    )  # empty values (as in .env.example) mean "use the default"
 
     # Service
     api_key: SecretStr | None = Field(default=None, description="When set, every /v1 call needs this key.")
@@ -26,14 +28,14 @@ class Settings(BaseSettings):
 
     # Models: the shield works with none. A provider adds semantic review, prompt optimisation and the guard.
     ai_provider: Provider = "none"
-    ai_timeout_s: float = 30.0
+    ai_timeout_s: float | None = None  # default: 30s for cloud providers, 180s for local Ollama
     ai_max_input_chars: int = 24_000
     gemini_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("GEMINI_API_KEY", "SHIELD_GEMINI_API_KEY")
     )
     gemini_model: str = "gemini-2.5-flash"
     ollama_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen3:8b"
+    ollama_model: str = "qwen2.5:7b"
     anthropic_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("ANTHROPIC_API_KEY", "SHIELD_ANTHROPIC_API_KEY")
     )

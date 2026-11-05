@@ -168,9 +168,20 @@ class ModelGateway:
             raise ModelUnavailable(f"Input is {len(user)} characters; the model input cap is {self.max_input_chars}.")
         started = time.perf_counter()
         try:
-            text = self.provider.complete(
-                system, user, json_mode=json_mode, max_tokens=max_tokens, timeout=self.timeout
-            )
+            try:
+                text = self.provider.complete(
+                    system, user, json_mode=json_mode, max_tokens=max_tokens, timeout=self.timeout
+                )
+            except (httpx.HTTPStatusError, httpx.TransportError) as e:
+                # One retry for transient failures (a local model reloading, a 5xx, a dropped connection).
+                if (isinstance(e, httpx.HTTPStatusError) and e.response.status_code < 500) or isinstance(
+                    e, httpx.TimeoutException
+                ):
+                    raise
+                time.sleep(1.0)
+                text = self.provider.complete(
+                    system, user, json_mode=json_mode, max_tokens=max_tokens, timeout=self.timeout
+                )
         except ModelUnavailable:
             raise
         except httpx.TimeoutException as e:
@@ -212,4 +223,6 @@ def build_gateway(s: Settings) -> ModelGateway:
         provider = AnthropicProvider(s.anthropic_api_key.get_secret_value(), s.anthropic_model)
     elif s.ai_provider == "openai" and s.openai_api_key:
         provider = OpenAiCompatibleProvider(s.openai_api_key.get_secret_value(), s.openai_base_url, s.openai_model)
-    return ModelGateway(provider, timeout=s.ai_timeout_s, max_input_chars=s.ai_max_input_chars)
+    # Local models on a laptop take tens of seconds per review; cloud APIs answer in a few.
+    timeout = s.ai_timeout_s if s.ai_timeout_s is not None else (180.0 if s.ai_provider == "ollama" else 30.0)
+    return ModelGateway(provider, timeout=timeout, max_input_chars=s.ai_max_input_chars)

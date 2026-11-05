@@ -20,15 +20,15 @@ export default function ReviewPage() {
     <>
       <PageHeader
         title="Review"
-        subtitle="What people decided about findings. 'Not an issue' suppresses that exact value for that rule in later inspections (matched by fingerprint, so the value itself is never stored). Rules with many suppressions need tuning."
+        subtitle="What people decided about findings. 'Dismiss' suppresses that exact value for that rule in later inspections (matched by fingerprint, so the value itself is never stored). Rules with many suppressions need tuning."
       />
       <ErrorBox error={fb.error ?? del.error} />
       {!fb.data && !fb.error ? <Spinner /> : (
         <div className="space-y-6">
           <Panel title="Rule quality" subtitle="Precision as people judged it." flush>
             <Table
-              head={["Rule", "Confirmed", "Not an issue", "Judged precision"]}
-              empty="No decisions yet. Mark findings as Real or Not an issue on the Inspect page."
+              head={["Rule", "Confirmed", "Dismissed", "Judged precision"]}
+              empty="No decisions yet. Mark findings as Real or Dismiss them on the Inspect page."
               rows={byRule.map(([rule, c]) => [
                 <span key="r" className="font-mono text-xs">{rule}</span>,
                 <span key="t" className="tabular-nums">{c.tp}</span>,
@@ -44,7 +44,7 @@ export default function ReviewPage() {
               rows={list.map((x) => [
                 <span key="r" className="font-mono text-xs">{x.rule_id}</span>,
                 <code key="v" className="font-mono text-xs text-slate-600">{x.preview ?? "—"}</code>,
-                <Badge key="vd" tone={statusTone(x.verdict)}>{x.verdict === "false_positive" ? "not an issue" : "real"}</Badge>,
+                <Badge key="vd" tone={statusTone(x.verdict)}>{x.verdict === "false_positive" ? "dismissed" : "real"}</Badge>,
                 <span key="n" className="text-xs text-slate-600">{x.note ?? "—"}</span>,
                 <span key="i" className="font-mono text-xs">{x.inspection_id ?? "—"}</span>,
                 <span key="w" className="whitespace-nowrap text-xs text-slate-500">{fmtDate(x.created_at)}</span>,

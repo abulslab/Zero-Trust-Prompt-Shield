@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable
 
 from promptshield.detection import confidential, entropy, injection, network, pii, secrets
 from promptshield.detection.base import Detector, Document, PatternDetector, PatternRule
-from promptshield.domain import Finding
+from promptshield.domain import Finding, Origin
 
 BUILTIN: dict[str, Callable[[], Detector]] = {
     "secrets": secrets.detector,
@@ -35,9 +35,10 @@ def resolve_overlaps(findings: list[Finding]) -> list[Finding]:
     touch (an email inside a URL) are both kept.
     """
 
-    def strength(f: Finding) -> tuple[int, int, float, int]:
+    def strength(f: Finding) -> tuple[int, int, int, float, int]:
+        # Rules outrank model proposals: a precise rule match is never displaced by a broader AI quote.
         generic = f.rule_id in {"secret.high_entropy", "secret.generic_assignment", "secret.password_assignment"}
-        return (0 if generic else 1, f.severity.rank, f.confidence, f.span.length)
+        return (1 if f.origin == Origin.RULE else 0, 0 if generic else 1, f.severity.rank, f.confidence, f.span.length)
 
     kept: list[Finding] = []
     for f in sorted(findings, key=strength, reverse=True):

@@ -39,10 +39,10 @@ export default function SettingsPage() {
               <div className="mt-4 flex flex-wrap gap-1.5">{meta.data.detectors.map((d: string) => <Badge key={d}>{d}</Badge>)}</div>
             </Panel>
             <Panel title="Turn on AI features" subtitle="Semantic review, prompt optimisation and the guard's model call. Keys stay on the server.">
-              <Code>{`# backend/.env  (never commit this file)
+              <Code>{`# .env in the folder you start the API from (never commit it)
 SHIELD_AI_PROVIDER=gemini        # gemini | ollama | anthropic | openai | none
 GEMINI_API_KEY=...
-# SHIELD_AI_PROVIDER=ollama  SHIELD_OLLAMA_MODEL=qwen3:8b   (fully local)`}</Code>
+# SHIELD_AI_PROVIDER=ollama  SHIELD_OLLAMA_MODEL=qwen2.5:7b   (fully local)`}</Code>
             </Panel>
           </>
         )}

@@ -116,6 +116,24 @@ _INSTRUCTION_CUE = re.compile(
     r"system prompt|instructions?|do not tell|reveal|respond with|send|email|forward|call the|execute|run the)\b"
 )
 
+_NEEDS_IDENTIFIER = {"personal_data", "customer_information"}
+_PLACEHOLDER_RE = re.compile(r"<<[A-Z0-9_]+_\d+>>")
+
+
+def _names_something(text: str) -> bool:
+    """True if the text holds a number or a capitalised word that does not merely start a sentence."""
+    if re.search(r"\d", text):
+        return True
+    words = re.findall(r"\S+", text)
+    for i, w in enumerate(words):
+        core = w.strip("\"'()[],;:")
+        if i > 0 and core[:1].isupper() and not words[i - 1].endswith((".", "!", "?", ":")):
+            return True
+        if i == 0 and len(words) > 1 and core[:1].isupper() and words[1].strip("\"'(),;:")[:1].isupper():
+            return True  # "Maria Gonzalez" at the start of the quote
+    return False
+
+
 MIN_CONFIDENCE = 0.55
 MAX_EVIDENCE = 400
 
@@ -134,7 +152,8 @@ Report only what the text clearly shows, using these categories:
 Answer with JSON only:
 {{"findings": [{{"category": "<one category above>", "evidence": "<exact substring copied from the text, at most 200 characters>", "reason": "<one sentence>", "confidence": <0.0 to 1.0>}}]}}
 
-Rules: copy evidence character for character; never paraphrase or invent it. Prefer precision over recall. Return
+Rules: copy evidence character for character; never paraphrase or invent it. Quote only the sensitive words themselves
+(for example the name, not the sentence around it), and never include a placeholder. Prefer precision over recall. Return
 {{"findings": []}} when nothing clearly qualifies. Do not report generic, public or hypothetical content."""
 
 
@@ -218,10 +237,32 @@ class SemanticReviewer:
             if cat == "prompt_injection" and not _INSTRUCTION_CUE.search(evidence):
                 reject("Labelled as an injection, but the evidence does not address or instruct an AI.")
                 continue
+            if cat in _NEEDS_IDENTIFIER and not _names_something(_PLACEHOLDER_RE.sub(" ", evidence)):
+                reject("Labelled as identifying someone, but the evidence contains no name, number or identifier.")
+                continue
             loc = _locate(sent, evidence)
             if loc is None:
                 reject("Evidence does not appear in the text: the model paraphrased or invented it.")
                 continue
+            touches_handled = any(s.red_start < loc[1] and loc[0] < s.red_end for s in red.segments)
+            if touches_handled and cat == "credentials_in_prose":
+                reject("The credential this quote points at was already found and handled by the rules.")
+                continue
+            if touches_handled:
+                # The quote runs over values the rules already handled: keep only the longest stretch between them
+                # that still supports the category, so the rules' precise findings stand and the model is credited
+                # only with what it added.
+                def supports(piece: tuple[int, int], cat: str = cat) -> bool:
+                    words = sent[piece[0] : piece[1]].split()
+                    if cat in _NEEDS_IDENTIFIER:
+                        return len(words) >= 2 and _names_something(sent[piece[0] : piece[1]])
+                    return len(words) >= 3
+
+                trimmed = next((p for p in _outside_placeholders(sent, loc, red.segments) if supports(p)), None)
+                if trimmed is None:
+                    reject("Evidence is mostly values the rules already handled.")
+                    continue
+                loc = trimmed
             start, end = red.to_original(*loc)
             if not doc.in_scope(start, end):
                 reject("Evidence is outside the part of the text under review.")
@@ -248,6 +289,31 @@ class SemanticReviewer:
                 )
             )
         return out
+
+
+_EDGE = " \t\r\n,;:()[]-\"'"  # characters trimmed from the ends of a quote fragment
+
+
+def _outside_placeholders(text: str, loc: tuple[int, int], segments: list[Any]) -> list[tuple[int, int]]:
+    """Stretches of `loc` that touch no placeholder, trimmed of punctuation and spaces, longest first."""
+    cuts = sorted(
+        (max(s.red_start, loc[0]), min(s.red_end, loc[1]))
+        for s in segments
+        if s.red_start < loc[1] and loc[0] < s.red_end
+    )
+    gaps, cursor = [], loc[0]
+    for a, b in cuts:
+        gaps.append((cursor, a))
+        cursor = max(cursor, b)
+    gaps.append((cursor, loc[1]))
+    pieces: list[tuple[int, int]] = []
+    for a, b in gaps:
+        chunk = text[a:b]
+        lead = len(chunk) - len(chunk.lstrip(_EDGE))
+        trail = len(chunk) - len(chunk.rstrip(_EDGE + "."))
+        if b - trail > a + lead:
+            pieces.append((a + lead, b - trail))
+    return sorted(pieces, key=lambda p: p[1] - p[0], reverse=True)
 
 
 def _locate(haystack: str, needle: str) -> tuple[int, int] | None:

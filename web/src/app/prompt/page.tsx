@@ -109,7 +109,11 @@ export default function PromptStudio() {
               </Panel>
             </div>
             <Panel title="Improved prompt" actions={<><CopyButton text={o.safe_rewrite} label="Copy safe version" /><CopyButton text={o.rewrite} /></>}
-              subtitle={o.model ? `Proposed by ${o.model.provider} · ${o.model.model} in ${fmt.ms(o.model.latency_ms)}` : "Deterministic structured rewrite"}>
+              subtitle={o.engine === "model"
+                ? `Proposed by ${o.model.provider} · ${o.model.model} in ${fmt.ms(o.model.latency_ms)}; passed every check`
+                : o.rejected_model_rewrite
+                  ? `Structured rewrite: ${o.model.provider} · ${o.model.model}'s proposal failed the checks`
+                  : "Deterministic structured rewrite"}>
               <pre className="max-h-[30rem] overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-800">{o.rewrite}</pre>
               {o.changes.length > 0 && (
                 <div className="mt-4">

@@ -130,3 +130,98 @@ def test_real_injection_in_prose_is_kept() -> None:
 
 def test_parse_json_tolerates_fences() -> None:
     assert parse_json('```json\n{"a": 1}\n```') == {"a": 1}
+
+
+def test_gateway_timeout_defaults_depend_on_provider() -> None:
+    from promptshield.ai.gateway import build_gateway
+    from promptshield.config import Settings
+
+    assert build_gateway(Settings(ai_provider="ollama")).timeout == 180.0
+    assert build_gateway(Settings(ai_provider="none")).timeout == 30.0
+    assert build_gateway(Settings(ai_provider="ollama", ai_timeout_s=60)).timeout == 60.0
+
+
+def test_quote_running_over_handled_values_is_trimmed_and_rules_keep_their_findings() -> None:
+    # Seen live with qwen2.5:7b: the model quoted a name together with the placeholders around it.
+    text = "Customer Maria Gonzalez (maria@contoso-mail.com) asked for a refund to GB82 WEST 1234 5698 7654 32."
+    shield, _ = shield_with(
+        [
+            proposal(
+                {
+                    "category": "personal_data",
+                    "evidence": "Customer Maria Gonzalez (<<EMAIL_1>>)",
+                    "reason": "Name.",
+                    "confidence": 0.9,
+                },
+                {"category": "personal_data", "evidence": "refund to <<IBAN_1>>", "reason": "?", "confidence": 0.9},
+            )
+        ]
+    )
+    r = shield.inspect(text, InspectOptions(ai="on"))
+    rules = {f.rule_id for f in r.findings if f.origin == Origin.RULE}
+    ai = [f for f in r.findings if f.origin == Origin.MODEL]
+    assert {"pii.email", "financial.iban"} <= rules
+    assert [text[f.span.start : f.span.end] for f in ai] == ["Customer Maria Gonzalez"]
+    assert len(r.ai.rejections) == 1  # "refund to <<IBAN_1>>" names nobody once the handled value is removed
+
+
+def test_personal_data_quote_must_name_someone() -> None:
+    # Seen live with qwen2.5:7b: "was charged twice. Refund to" reported as personal data.
+    text = "The card was charged twice. Refund to the original card. Ask Priya Raman to approve it."
+    shield, _ = shield_with(
+        [
+            proposal(
+                {
+                    "category": "personal_data",
+                    "evidence": "was charged twice. Refund to",
+                    "reason": "?",
+                    "confidence": 0.9,
+                },
+                {"category": "personal_data", "evidence": "Priya Raman", "reason": "A person.", "confidence": 0.9},
+            )
+        ]
+    )
+    r = shield.inspect(text, InspectOptions(ai="on"))
+    assert [text[f.span.start : f.span.end] for f in r.findings if f.origin == Origin.MODEL] == ["Priya Raman"]
+    assert "no name, number or identifier" in r.ai.rejections[0].reason
+
+
+def test_whole_sentence_quote_is_trimmed_to_the_piece_that_names_someone() -> None:
+    # Seen live with qwen2.5:7b: the whole sentence was quoted around four placeholders.
+    text = "Customer Maria Gonzalez (ana@contoso-mail.com) says card 4539 1488 0343 6467 was charged twice. Refund it."
+    quote = "Maria Gonzalez (<<EMAIL_1>>) says card <<CARD_NUMBER_1>> was charged twice. Refund it."
+    shield, _ = shield_with(
+        [proposal({"category": "personal_data", "evidence": quote, "reason": "Name.", "confidence": 1.0})]
+    )
+    r = shield.inspect(text, InspectOptions(ai="on"))
+    assert [text[f.span.start : f.span.end] for f in r.findings if f.origin == Origin.MODEL] == ["Maria Gonzalez"]
+
+
+def test_credential_quote_around_a_handled_token_is_rejected() -> None:
+    # Seen live with qwen2.5:7b: "debug token is <<GITHUB_TOKEN_1>>" reported as a credential in prose.
+    text = f"Use the debug token is {gh_token()} for now."
+    quote = "debug token is <<GITHUB_TOKEN_1>>"
+    shield, _ = shield_with(
+        [proposal({"category": "credentials_in_prose", "evidence": quote, "reason": "?", "confidence": 0.9})]
+    )
+    r = shield.inspect(text, InspectOptions(ai="on"))
+    assert not [f for f in r.findings if f.origin == Origin.MODEL]
+    assert "already found and handled" in r.ai.rejections[0].reason
+
+
+def test_gateway_retries_once_on_a_server_error() -> None:
+    import httpx
+
+    from promptshield.ai.gateway import ModelGateway
+
+    class Flaky:
+        name, model, calls = "flaky", "m", 0
+
+        def complete(self, system: str, user: str, *, json_mode: bool, max_tokens: int, timeout: float) -> str:
+            Flaky.calls += 1
+            if Flaky.calls == 1:
+                req = httpx.Request("POST", "http://x")
+                raise httpx.HTTPStatusError("boom", request=req, response=httpx.Response(500, request=req))
+            return "ok"
+
+    assert ModelGateway(Flaky()).complete("s", "u").text == "ok" and Flaky.calls == 2

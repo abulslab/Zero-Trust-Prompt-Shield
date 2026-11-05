@@ -62,8 +62,10 @@ export const fmt = {
   pct: (n?: number | null) => (n == null ? "—" : `${Math.round(n * 100)}%`),
   num: (n?: number | null) => (n == null ? "—" : n.toLocaleString()),
   ms: (n?: number | null) => (n == null ? "—" : n >= 1000 ? `${(n / 1000).toFixed(1)}s` : `${n}ms`),
-  label: (s: string) => s.replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+  label: (s: string) => ACRONYMS[s] ?? s.replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
 };
+
+const ACRONYMS: Record<string, string> = { pii: "PII" };
 
 // Types returned by the API (the subset the UI uses).
 export interface Finding {

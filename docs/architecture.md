@@ -33,7 +33,7 @@ Every entry point (API, CLI, GitHub Action, pre-commit hook, guard) calls the sa
 | Resolve | `detection.resolve_overlaps` | One finding per stretch of text: a provider-specific key beats the generic entropy rule on the same token. |
 | Suppress | `audit.suppressed()` | Findings people marked "not an issue" are kept but marked suppressed, matched by fingerprint. |
 | Propose | `ai.semantic.SemanticReviewer` | Optional. The model sees the text with every rule finding replaced by a placeholder, inside a randomly delimited block. |
-| Verify | same | Category in the taxonomy, confidence above 0.55, evidence an exact (whitespace-tolerant) span of what the model saw, mapped back to the original. Rejections are kept with their reason. |
+| Verify | same | Category in the taxonomy, confidence of at least 0.55, evidence an exact (whitespace-tolerant) span of what the model saw, mapped back to the original. Quotes that run over handled values are trimmed to what the model added; injections must address an AI; personal and customer data must name someone. Rejections are kept with their reason. |
 | Decide | `policy.Policy.decide` | Each finding takes the action of the first matching rule; the decision is the most restrictive, raised to block at the pack's risk threshold. |
 | Act | `redaction` | Mask (one-way) or placeholders (reversible, mapping returned to the caller only). |
 | Record | `audit.SqliteAuditStore` | Hash, length, decision, masked findings, timings. No text, no raw values. |
@@ -114,7 +114,7 @@ sequenceDiagram
 
 ## 7. Quality
 
-- 67 backend tests (detectors, policies, redaction, AI verification with a scripted provider, prompt quality, API, CLI),
+- 74 backend tests (detectors, policies, redaction, AI verification with a scripted provider, prompt quality, API, CLI),
   ruff and mypy in strict-ish mode, all in CI.
 - A labelled corpus with hard negatives; the benchmark runs in CI and fails the build if recall drops.
 - Credential-shaped test values are assembled at run time, so the repository holds nothing a secret scanner would flag.

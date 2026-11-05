@@ -106,17 +106,20 @@ export function FindingsTable({ findings, inspectionId, selected }: { findings: 
 
   return (
     <Table
-      head={["Line", "Finding", "Category", "Severity", "Action", "Value", "Source", ""]}
+      head={["Line", "Finding", "Category", "Severity", "Action", "Value", ""]}
       empty="No findings."
       rows={findings.map((f) => {
         const expanded = open === f.id || selected === f.id;
         return [
           <span key="l" className="tabular-nums text-xs text-slate-500">{f.span.line}:{f.span.column}</span>,
-          <div key="t" className="min-w-56">
+          <div key="t" className="min-w-48">
             <button type="button" className="text-left font-medium text-slate-900 hover:text-blue-700" onClick={() => setOpen(expanded ? null : f.id)}>
               {f.title}{f.suppressed && <span className="ml-1.5 text-xs font-normal text-slate-400">(suppressed)</span>}
             </button>
-            <div className="font-mono text-[11px] text-slate-400">{f.rule_id}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] text-slate-400">{f.rule_id}</span>
+              {f.origin === "model" && <Badge tone="accent" title="Proposed by a model and verified against the exact text">AI, verified</Badge>}
+            </div>
             {expanded && (
               <div className="mt-2 space-y-1.5 text-xs">
                 <p className="text-slate-700">{f.message}</p>
@@ -130,16 +133,13 @@ export function FindingsTable({ findings, inspectionId, selected }: { findings: 
           <Badge key="s" tone={statusTone(f.severity)}>{f.severity}</Badge>,
           <Badge key="a" tone={statusTone(f.action)}>{f.action}</Badge>,
           <code key="v" className="whitespace-nowrap font-mono text-xs text-slate-600">{f.preview}</code>,
-          <Badge key="o" tone={f.origin === "model" ? "accent" : "neutral"} title={f.origin === "model" ? "Proposed by a model and verified against the text" : "Rule-based detector"}>
-            {f.origin === "model" ? "AI, verified" : "Rule"}
-          </Badge>,
-          <div key="fb" className="flex justify-end">
+          <div key="fb" className="flex justify-end whitespace-nowrap">
             {marked[f.id] || f.suppressed ? (
               <span className="text-xs text-slate-500">{marked[f.id] === "true_positive" ? "Confirmed" : "Suppressed"}</span>
             ) : (
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" title="Confirm this is a real problem" onClick={() => fb.mutate({ ...f, verdict: "true_positive" }, { onSuccess: () => setMarked((m) => ({ ...m, [f.id]: "true_positive" })) })}>Real</Button>
-                <Button size="sm" variant="ghost" title="Not a problem: suppress this exact value next time" onClick={() => fb.mutate({ ...f, verdict: "false_positive" }, { onSuccess: () => setMarked((m) => ({ ...m, [f.id]: "false_positive" })) })}>Not an issue</Button>
+                <Button size="sm" variant="ghost" title="Not a problem: suppress this exact value next time" onClick={() => fb.mutate({ ...f, verdict: "false_positive" }, { onSuccess: () => setMarked((m) => ({ ...m, [f.id]: "false_positive" })) })}>Dismiss</Button>
               </div>
             )}
           </div>,

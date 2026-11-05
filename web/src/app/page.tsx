@@ -61,7 +61,7 @@ export default function Overview() {
         <Stat label="Inspections" value={fmt.num(s.inspections)} hint={`${s.ai_reviews} with AI review`} />
         <Stat label="Blocked" value={fmt.num(s.by_action.block ?? 0)} hint={`${pct(s.by_action.block ?? 0)} of all`} />
         <Stat label="Redacted" value={fmt.num(s.by_action.redact ?? 0)} hint={`${pct(s.by_action.redact ?? 0)} sent after redaction`} />
-        <Stat label="Average risk" value={s.avg_risk} hint={`${fmt.num(s.findings)} findings · ${s.feedback?.false_positive ?? 0} marked not an issue`} />
+        <Stat label="Average risk" value={s.avg_risk} hint={`${fmt.num(s.findings)} findings · ${s.feedback?.false_positive ?? 0} dismissed`} />
       </div>
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Panel title="Findings by category" subtitle="Last 1,000 inspections, suppressed findings excluded."><Bars data={s.by_category} /></Panel>
