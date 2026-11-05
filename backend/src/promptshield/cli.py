@@ -287,6 +287,15 @@ def cmd_benchmark(_: argparse.Namespace) -> int:
     return 0 if report["overall"]["fn"] == 0 else 1
 
 
+def cmd_audit_verify(args: argparse.Namespace) -> int:
+    from promptshield.audit import SqliteAuditStore
+
+    db_path = args.db or get_settings().db_path
+    res = SqliteAuditStore(db_path).verify_chain()
+    print(json.dumps(res, indent=2))
+    return 0 if res.get("valid") else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="promptshield", description="Zero-Trust Prompt Shield")
     p.add_argument("--version", action="version", version=__version__)
@@ -333,6 +342,10 @@ def main(argv: list[str] | None = None) -> int:
 
     bm = sub.add_parser("benchmark", help="Measure the detectors on the built-in labelled corpus.")
     bm.set_defaults(fn=cmd_benchmark)
+
+    av = sub.add_parser("audit-verify", help="Verify the tamper-evident SHA-256 hash chain of the audit database.")
+    av.add_argument("--db", default=None, help="Path to the SQLite audit database (defaults to SHIELD_DB_PATH).")
+    av.set_defaults(fn=cmd_audit_verify)
 
     args = p.parse_args(argv)
     try:

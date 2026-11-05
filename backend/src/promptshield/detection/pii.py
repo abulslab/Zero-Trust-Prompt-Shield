@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from promptshield.detection.base import PatternDetector, PatternRule
-from promptshield.detection.validators import iban, luhn, phone, us_ssn
+from promptshield.detection.validators import iban, luhn, not_synthetic_email, phone, us_ssn
 from promptshield.domain import Category, Direction, Severity
 
 _PSEUDONYMISE = "Replace it with a placeholder (for example <<EMAIL_1>>) before sending; Prompt Shield can restore it in the answer."
@@ -18,6 +18,7 @@ RULES: list[PatternRule] = [
         guidance=_PSEUDONYMISE,
         pattern=r"(?<![\w.+:/%-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}\b",
         confidence=0.95,
+        validator=not_synthetic_email,
         tags=("gdpr",),
     ),
     PatternRule(

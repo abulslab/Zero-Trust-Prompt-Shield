@@ -64,20 +64,36 @@ def us_ssn(value: str) -> bool:
     return value not in {"123-45-6789", "078-05-1120"}
 
 
+_DOC_NETS = (
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+)
+
+
+def not_synthetic_email(value: str) -> bool:
+    return not value.strip().lower().endswith(".invalid")
+
+
 def private_ipv4(value: str) -> bool:
     try:
         ip = ipaddress.ip_address(value)
     except ValueError:
         return False
+    if any(ip in net for net in _DOC_NETS):
+        return False
     return bool(ip.is_private and not ip.is_loopback and not ip.is_unspecified and str(ip) != "0.0.0.0")
 
 
 def phone(value: str) -> bool:
-    digits = re.sub(r"\D", "", value)
+    v = value.strip()
+    if re.fullmatch(r"\+44 20 7946 00\d\d", v):
+        return False
+    digits = re.sub(r"\D", "", v)
     if not 10 <= len(digits) <= 15 or len(set(digits)) <= 2:
         return False
     # Dates, versions and long numeric ids look like phone numbers; require a phone-like separator or a "+".
-    return value.strip().startswith("+") or bool(re.search(r"[\s().-]", value.strip()))
+    return v.startswith("+") or bool(re.search(r"[\s().-]", v))
 
 
 def shannon_entropy(value: str) -> float:

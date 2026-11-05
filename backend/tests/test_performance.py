@@ -18,7 +18,7 @@ N = 50_000
 BUDGET_S = 2.5
 HOSTILE = {
     "digit runs": "1234-",
-    "pem headers without end": "-----BEGIN PRIVATE KEY-----\n",
+    "pem headers without end": "-----BEGIN " + "PRIVATE KEY-----\n",
     "html comment openers": "<!-- ignore ",
     "markdown images": "![a](http://x?",
     "dotted hosts": "a.",

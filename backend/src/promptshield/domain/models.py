@@ -7,6 +7,8 @@ except through `Finding.value`, which is excluded from every serialised form.
 from __future__ import annotations
 
 import hashlib
+import hmac
+import os
 from enum import StrEnum
 from typing import Any
 
@@ -113,9 +115,30 @@ def mask(value: str, category: Category | None = None) -> str:
     return f"{v[:keep]}{'*' * min(8, len(v) - keep)}"
 
 
-def fingerprint(rule_id: str, value: str) -> str:
-    """Stable identity of a finding across inspections, without storing the value itself."""
-    return hashlib.sha256(f"{rule_id}\x00{value.strip()}".encode()).hexdigest()[:24]
+_fingerprint_key: bytes | None = None
+
+
+def set_fingerprint_key(key: str | None) -> None:
+    """Configure an optional HMAC key for finding fingerprints."""
+    global _fingerprint_key
+    _fingerprint_key = key.encode("utf-8") if key else None
+
+
+def fingerprint(rule_id: str, value: str, key: str | None = None) -> str:
+    """Stable identity of a finding across inspections, without storing the value itself.
+
+    Uses HMAC-SHA256 when `key` or `SHIELD_FINGERPRINT_KEY` is configured so low-entropy values
+    (phone numbers, SSNs, internal IPs) cannot be reversed by rainbow tables.
+    """
+    payload = f"{rule_id}\x00{value.strip()}".encode()
+    effective_key = (
+        key.encode("utf-8")
+        if key
+        else (_fingerprint_key or os.environ.get("SHIELD_FINGERPRINT_KEY", "").encode("utf-8") or None)
+    )
+    if effective_key:
+        return hmac.new(effective_key, payload, hashlib.sha256).hexdigest()[:24]
+    return hashlib.sha256(payload).hexdigest()[:24]
 
 
 class Finding(BaseModel):

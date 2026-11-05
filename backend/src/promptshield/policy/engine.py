@@ -79,6 +79,9 @@ class Policy(BaseModel):
         reasons: list[str] = []
         for f in active:
             a, why = self.action_for(f, direction)
+            if f.action.rank > a.rank:
+                a = f.action
+                why = why or f.title
             f.action = a
             if a.rank > action.rank:
                 action = a

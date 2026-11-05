@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -54,6 +54,22 @@ class ChatMessage(BaseModel):
 
 
 class GuardRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=50)
+    policy: str | None = None
+
+
+class ToolGuardRequest(BaseModel):
+    tool_name: str = Field(min_length=1, max_length=120)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    untrusted_text: str | None = Field(
+        default=None,
+        description="Optional untrusted context (e.g. retrieved docs) to enforce cross-boundary taint tracking.",
+    )
+    policy: str | None = None
+
+
+class OpenAIChatRequest(BaseModel):
+    model: str = "promptshield-guard"
     messages: list[ChatMessage] = Field(min_length=1, max_length=50)
     policy: str | None = None
 

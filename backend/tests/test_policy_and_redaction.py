@@ -82,3 +82,39 @@ def test_false_positive_feedback_suppresses_next_time(shield: Shield) -> None:
     shield.audit.add_feedback(f.fingerprint, f.rule_id, "false_positive", "test inbox", None, None)
     again = shield.inspect(text)
     assert again.findings[0].suppressed and again.decision.action == Action.ALLOW
+
+
+def test_synthetic_redaction_and_restore_roundtrip(shield: Shield) -> None:
+    text = "Contact ana@contoso.example on +44 20 7946 0958 or ssh 10.42.1.9"
+    r = shield.inspect(text)
+    red = redact(text, r.findings, RedactionMode.SYNTHETIC)
+    assert "user1@redacted.invalid" in red.text
+    assert "+44 20 7946 0001" in red.text
+    assert "192.0.2.1" in red.text
+    restored, unknown = restore(
+        "Emailed user1@redacted.invalid and pinged 192.0.2.1 (+44 20 7946 0001).",
+        red.mapping,
+    )
+    assert restored == "Emailed ana@contoso.example and pinged 10.42.1.9 (+44 20 7946 0958)."
+    assert not unknown
+
+
+def test_hmac_fingerprint_and_tamper_evident_audit_chain(shield: Shield) -> None:
+    from promptshield.audit import SqliteAuditStore
+    from promptshield.domain.models import fingerprint
+
+    plain = fingerprint("pii.email", "ana@contoso.example")
+    keyed = fingerprint("pii.email", "ana@contoso.example", key="org-hmac-secret")
+    assert len(plain) == 24 and len(keyed) == 24 and plain != keyed
+
+    shield.inspect("first message to ana@contoso.example")
+    second = shield.inspect("second message to bo@contoso.example")
+    assert isinstance(shield.audit, SqliteAuditStore)
+    verified = shield.audit.verify_chain()
+    assert verified["valid"] is True and verified["checked"] == 2
+
+    # Tamper directly with the SQLite row and confirm the hash chain catches it.
+    shield.audit._db.execute("UPDATE inspections SET risk_score = 0 WHERE id = ?", (second.id,))
+    shield.audit._db.commit()
+    broken = shield.audit.verify_chain()
+    assert broken["valid"] is False and broken["broken_at"] == second.id

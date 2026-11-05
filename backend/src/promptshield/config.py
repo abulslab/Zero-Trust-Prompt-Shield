@@ -18,6 +18,10 @@ class Settings(BaseSettings):
 
     # Service
     api_key: SecretStr | None = Field(default=None, description="When set, every /v1 call needs this key.")
+    fingerprint_key: SecretStr | None = Field(
+        default=None,
+        description="Optional HMAC-SHA256 secret key for finding fingerprints to prevent rainbow-table correlation.",
+    )
     cors_origins: list[str] = ["http://localhost:3200", "http://127.0.0.1:3200"]
     max_chars: int = 200_000
     rate_limit_per_minute: int = 240

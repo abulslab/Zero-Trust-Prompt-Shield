@@ -23,14 +23,17 @@ from promptshield.api.schemas import (
     GuardRequest,
     InspectRequest,
     LintRequest,
+    OpenAIChatRequest,
     OptimizeRequest,
     RedactRequest,
     RestoreRequest,
+    ToolGuardRequest,
 )
 from promptshield.audit import SqliteAuditStore
 from promptshield.config import Settings, get_settings
 from promptshield.detection import BUILTIN
 from promptshield.domain import Category
+from promptshield.domain.models import set_fingerprint_key
 from promptshield.eval.runner import run as run_benchmark
 from promptshield.policy import PolicyStore
 from promptshield.redaction import restore
@@ -40,6 +43,7 @@ log = logging.getLogger("promptshield")
 
 
 def build_shield(s: Settings) -> Shield:
+    set_fingerprint_key(s.fingerprint_key.get_secret_value() if s.fingerprint_key else None)
     return Shield(
         policies=PolicyStore(s.policy_dir),
         gateway=build_gateway(s),
@@ -70,7 +74,13 @@ def create_app(settings: Settings | None = None, shield: Shield | None = None) -
         allow_origins=s.cors_origins,
         allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-Id", "X-Shield-Source"],
-        expose_headers=["X-Request-Id"],
+        expose_headers=[
+            "X-Request-Id",
+            "X-Shield-Decision",
+            "X-Shield-Risk-Score",
+            "X-Shield-Placeholders",
+            "X-Shield-Canary-Verified",
+        ],
         allow_credentials=False,
     )
     _routes(app, sh, s)
@@ -261,11 +271,103 @@ def _routes(app: FastAPI, sh: Shield, s: Settings) -> None:
             "answer": g.answer,
             "sent": g.sent,
             "placeholders": g.placeholders,
+            "canary_verified": g.canary_verified,
+            "tainted_sinks": g.tainted_sinks,
             "model": g.model,
             "error": g.error,
             "input": g.input.public() | {"redacted": None},
             "output": g.output.public() | {"redacted": None} if g.output else None,
         }
+
+    @app.post("/v1/guard/tool", tags=["guard"])
+    def guard_tool(req: ToolGuardRequest, request: Request) -> dict[str, Any]:
+        check_policy(req.policy)
+        res = sh.guard_tool(
+            tool_name=req.tool_name,
+            arguments=req.arguments,
+            untrusted_text=req.untrusted_text,
+            policy_id=req.policy,
+            source=source_of(request) if source_of(request) != "api" else "tool_guard",
+        )
+        return {
+            "allowed": res.allowed,
+            "tool_name": res.tool_name,
+            "decision": res.decision.model_dump(mode="json"),
+            "redacted_arguments": res.redacted_arguments,
+            "tainted_sinks": res.tainted_sinks,
+            "inspection": res.inspection.public() | {"redacted": None},
+        }
+
+    @app.post("/v1/chat/completions", tags=["guard"])
+    def openai_chat_completions(req: OpenAIChatRequest, request: Request) -> JSONResponse:
+        check_policy(req.policy)
+        g = sh.guard(
+            [m.model_dump() for m in req.messages],
+            req.policy,
+            source=source_of(request) if source_of(request) != "api" else "openai_proxy",
+        )
+        decision_action = (
+            g.output.decision.action.value
+            if g.output and g.status == "blocked_output"
+            else g.input.decision.action.value
+        )
+        risk_score = (
+            g.output.decision.risk_score if g.output and g.status == "blocked_output" else g.input.decision.risk_score
+        )
+        headers = {
+            "X-Shield-Decision": decision_action,
+            "X-Shield-Risk-Score": str(risk_score),
+            "X-Shield-Placeholders": str(g.placeholders),
+            "X-Shield-Canary-Verified": "true" if g.canary_verified else "false",
+        }
+        if g.status in {"blocked_input", "blocked_output"}:
+            summary = g.output.summary if g.output and g.status == "blocked_output" else g.input.summary
+            return JSONResponse(
+                status_code=400,
+                headers=headers,
+                content={
+                    "error": {
+                        "message": f"Zero-Trust Prompt Shield ({g.status}): {summary}",
+                        "type": "promptshield_policy_violation",
+                        "code": g.status,
+                    }
+                },
+            )
+        if g.status == "model_unavailable":
+            return JSONResponse(
+                status_code=503,
+                headers=headers,
+                content={
+                    "error": {
+                        "message": g.error or "No upstream AI model is configured.",
+                        "type": "model_unavailable",
+                        "code": "model_unavailable",
+                    }
+                },
+            )
+        return JSONResponse(
+            status_code=200,
+            headers=headers,
+            content={
+                "id": f"chatcmpl-{uuid.uuid4().hex[:16]}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": (g.model or {}).get("model") or req.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": g.answer or ""},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "shield": {
+                    "status": g.status,
+                    "placeholders": g.placeholders,
+                    "canary_verified": g.canary_verified,
+                    "tainted_sinks": g.tainted_sinks,
+                },
+            },
+        )
 
     @app.get("/v1/policies", tags=["policy"])
     def policies() -> list[dict[str, Any]]:
@@ -281,6 +383,12 @@ def _routes(app: FastAPI, sh: Shield, s: Settings) -> None:
         limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0), action: str | None = None
     ) -> list[dict[str, Any]]:
         return sh.audit.recent(limit, offset, action) if sh.audit else []
+
+    @app.get("/v1/audit/verify", tags=["audit"])
+    def audit_verify() -> dict[str, Any]:
+        if sh.audit is None:
+            return {"valid": True, "checked": 0, "total": 0, "head_hash": "GENESIS", "broken_at": None}
+        return sh.audit.verify_chain()
 
     @app.get("/v1/audit/{inspection_id}", tags=["audit"])
     def audit_item(inspection_id: str) -> dict[str, Any]:
