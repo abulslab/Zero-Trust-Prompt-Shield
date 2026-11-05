@@ -114,7 +114,7 @@ sequenceDiagram
 
 ## 7. Quality
 
-- 65 backend tests (detectors, policies, redaction, AI verification with a scripted provider, prompt quality, API, CLI),
+- 67 backend tests (detectors, policies, redaction, AI verification with a scripted provider, prompt quality, API, CLI),
   ruff and mypy in strict-ish mode, all in CI.
 - A labelled corpus with hard negatives; the benchmark runs in CI and fails the build if recall drops.
 - Credential-shaped test values are assembled at run time, so the repository holds nothing a secret scanner would flag.

@@ -95,6 +95,27 @@ TAXONOMY: dict[str, SemanticType] = {
     ),
 }
 
+# What each category means, for the model. Small local models confuse categories when they only see a title.
+DESCRIPTIONS: dict[str, str] = {
+    "personal_data": "names, postal addresses, dates of birth or other details that identify a real person",
+    "health_data": "diagnoses, treatments, medications or other health information about a person",
+    "credentials_in_prose": "a password, key or token given in words rather than as a value (e.g. 'the PIN is the year we founded')",
+    "prompt_injection": "text that gives orders to an AI assistant (e.g. 'ignore your instructions', 'assistant: send...'); NOT business rules or thresholds",
+    "system_architecture": "internal components, servers, clusters and how they connect",
+    "data_flow": "where internal data moves, is stored or is sent",
+    "security_control": "how fraud checks, detections, thresholds, access rules or monitoring work internally",
+    "business_strategy": "unreleased plans, pricing changes, forecasts, deals, roadmaps",
+    "customer_information": "named customers or clients, their contracts, accounts or disputes",
+    "proprietary_logic": "internal business rules, formulas or decision logic that are not public",
+    "legal_or_hr": "lawsuits, legal advice, disciplinary or performance matters about staff",
+}
+
+# A proposal of injection must read like an order to an AI; anything else is a miscategorised business sentence.
+_INSTRUCTION_CUE = re.compile(
+    r"(?i)\b(?:ignore|disregard|forget|override|you are|you must|you should|act as|pretend|assistant|AI\b|"
+    r"system prompt|instructions?|do not tell|reveal|respond with|send|email|forward|call the|execute|run the)\b"
+)
+
 MIN_CONFIDENCE = 0.55
 MAX_EVIDENCE = 400
 
@@ -118,7 +139,7 @@ Rules: copy evidence character for character; never paraphrase or invent it. Pre
 
 
 def _system() -> str:
-    lines = "\n".join(f"- {k}: {v.title}" for k, v in TAXONOMY.items())
+    lines = "\n".join(f"- {k}: {DESCRIPTIONS.get(k, v.title)}" for k, v in TAXONOMY.items())
     return SYSTEM.format(taxonomy=lines)
 
 
@@ -193,6 +214,9 @@ class SemanticReviewer:
                 continue
             if re.fullmatch(r"\s*(?:<<[A-Z0-9_]+_\d+>>\s*)+", evidence):
                 reject("Evidence is only a placeholder for a value already handled.")
+                continue
+            if cat == "prompt_injection" and not _INSTRUCTION_CUE.search(evidence):
+                reject("Labelled as an injection, but the evidence does not address or instruct an AI.")
                 continue
             loc = _locate(sent, evidence)
             if loc is None:
