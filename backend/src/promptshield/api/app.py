@@ -95,14 +95,20 @@ def _security_middleware(app: FastAPI, s: Settings) -> None:
                 if not supplied or not hmac.compare_digest(supplied, api_key):
                     return _problem(401, "Missing or invalid API key.", rid)
             client = request.client.host if request.client else "?"
-            window = hits.setdefault(client, deque())
             now = time.monotonic()
+            if len(hits) > 10_000:  # forget idle clients so many distinct addresses cannot grow memory without bound
+                for key in [k for k, w in hits.items() if not w or now - w[-1] > 60]:
+                    del hits[key]
+            window = hits.setdefault(client, deque())
             while window and now - window[0] > 60:
                 window.popleft()
             if len(window) >= s.rate_limit_per_minute:
                 return _problem(429, "Rate limit exceeded; try again in a minute.", rid)
             window.append(now)
-            length = int(request.headers.get("content-length") or 0)
+            try:
+                length = int(request.headers.get("content-length") or 0)
+            except ValueError:
+                return _problem(400, "Invalid Content-Length header.", rid)
             if length > s.max_chars * 4 + 65_536:
                 return _problem(413, "Request body is too large.", rid)
         response = await call_next(request)

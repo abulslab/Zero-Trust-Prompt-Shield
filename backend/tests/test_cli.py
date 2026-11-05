@@ -27,9 +27,7 @@ def test_scan_clean_passes(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captu
 
 
 def test_scan_sarif(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    code, out = run(
-        monkeypatch, capsys, "mail ana@contoso-mail.com", "scan", "--format", "sarif", "--fail-on", "redact"
-    )
+    code, out = run(monkeypatch, capsys, "mail ana@contoso.example", "scan", "--format", "sarif", "--fail-on", "redact")
     sarif = json.loads(out)
     assert code == 1 and sarif["runs"][0]["results"][0]["ruleId"] == "pii.email"
 
@@ -37,7 +35,7 @@ def test_scan_sarif(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixtu
 def test_lint_and_redact(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     code, out = run(monkeypatch, capsys, "make it better", "lint", "--min-score", "90")
     assert code == 1 and "PQ001" in out
-    code, out = run(monkeypatch, capsys, "Ask ana@contoso-mail.com", "redact")
+    code, out = run(monkeypatch, capsys, "Ask ana@contoso.example", "redact")
     assert code == 0 and out == "Ask <<EMAIL_1>>"
 
 
@@ -54,3 +52,8 @@ def test_oversized_and_lock_files_are_skipped_not_fatal(tmp_path: Path, capsys: 
 def test_diff_line_map_points_at_new_file_lines() -> None:
     diff = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -10,0 +11,2 @@\n+a\n+b\n"
     assert _diff_line_map(diff) == {5: 11, 6: 12}
+
+
+def test_diff_ref_that_looks_like_an_option_is_refused(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["scan", "--diff=--output=pwned.txt"]) == 2
+    assert "expects a git ref" in capsys.readouterr().err

@@ -27,7 +27,9 @@ RULES: list[PatternRule] = [
         title="Internal host name",
         message="A host name in an internal-only domain.",
         guidance=_TOPOLOGY,
-        pattern=r"(?i)\b(?:[a-z0-9-]+\.)+(?:internal|intranet|corp|lan|local|localdomain|private|svc\.cluster\.local)\b(?![.-]\w)",
+        # DNS-shaped and bounded (labels of at most 63 characters, at most 10 of them) so that long runs of
+        # letters, digits and dashes cannot make the engine backtrack quadratically.
+        pattern=r"(?i)(?<![\w.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.){1,10}(?:internal|intranet|corp|lan|local|localdomain|private|svc\.cluster\.local)\b(?![.-]\w)",
         confidence=0.8,
     ),
 ]

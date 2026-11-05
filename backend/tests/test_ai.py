@@ -143,7 +143,7 @@ def test_gateway_timeout_defaults_depend_on_provider() -> None:
 
 def test_quote_running_over_handled_values_is_trimmed_and_rules_keep_their_findings() -> None:
     # Seen live with qwen2.5:7b: the model quoted a name together with the placeholders around it.
-    text = "Customer Maria Gonzalez (maria@contoso-mail.com) asked for a refund to GB82 WEST 1234 5698 7654 32."
+    text = "Customer Maria Gonzalez (maria@contoso.example) asked for a refund to GB82 WEST 1234 5698 7654 32."
     shield, _ = shield_with(
         [
             proposal(
@@ -188,7 +188,7 @@ def test_personal_data_quote_must_name_someone() -> None:
 
 def test_whole_sentence_quote_is_trimmed_to_the_piece_that_names_someone() -> None:
     # Seen live with qwen2.5:7b: the whole sentence was quoted around four placeholders.
-    text = "Customer Maria Gonzalez (ana@contoso-mail.com) says card 4539 1488 0343 6467 was charged twice. Refund it."
+    text = "Customer Maria Gonzalez (ana@contoso.example) says card 4111 1111 1111 1111 was charged twice. Refund it."
     quote = "Maria Gonzalez (<<EMAIL_1>>) says card <<CARD_NUMBER_1>> was charged twice. Refund it."
     shield, _ = shield_with(
         [proposal({"category": "personal_data", "evidence": quote, "reason": "Name.", "confidence": 1.0})]

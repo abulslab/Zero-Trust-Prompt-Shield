@@ -4,4 +4,4 @@ Rule-based detectors decide what is a finding; models may only propose, and a pr
 only once the engine has tied it to an exact span of the submitted text.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"

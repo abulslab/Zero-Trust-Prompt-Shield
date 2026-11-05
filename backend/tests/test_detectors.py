@@ -58,15 +58,15 @@ def test_placeholders_hashes_and_ids_are_not_secrets(text: str) -> None:
 
 
 def test_validators() -> None:
-    assert luhn("4539 1488 0343 6467") and not luhn("4539 1488 0343 6468")
+    assert luhn("4111 1111 1111 1111") and not luhn("4111 1111 1111 1112")
     assert iban("GB82 WEST 1234 5698 7654 32") and not iban("GB82 WEST 1234 5698 7654 33")
-    assert us_ssn("512-48-3267") and not us_ssn("000-12-3456") and not us_ssn("123-45-6789")
+    assert us_ssn("219-09-9999") and not us_ssn("000-12-3456") and not us_ssn("123-45-6789")
     assert private_ipv4("10.1.2.3") and private_ipv4("192.168.0.10") and not private_ipv4("8.8.8.8")
     assert not not_placeholder("changeme") and not_placeholder("Tr0ub4dor-77")
 
 
 def test_pii_and_network() -> None:
-    r = rules("Mail ana@contoso-mail.com, call +44 20 7946 0958, host 10.4.5.6 and api.prod.internal")
+    r = rules("Mail ana@contoso.example, call +44 20 7946 0958, host 10.4.5.6 and api.prod.internal")
     assert {"pii.email", "pii.phone", "network.private_ip", "network.internal_host"} <= r
 
 
@@ -75,7 +75,7 @@ def test_order_numbers_are_not_phones() -> None:
 
 
 def test_password_inside_connection_string_is_not_an_email() -> None:
-    assert "pii.email" not in rules("postgres://admin:S3cretPass@db.acme.io:5432/app")
+    assert "pii.email" not in rules("postgres://admin:S3cretPass@db.example.com:5432/app")
 
 
 def test_diff_only_scans_added_lines() -> None:
@@ -116,7 +116,7 @@ def test_security_discussion_is_not_an_injection() -> None:
 
 
 def test_spans_report_line_and_column() -> None:
-    f = detect("first line\nmail: bob@contoso-mail.com")[0]
+    f = detect("first line\nmail: bob@contoso.example")[0]
     assert (f.span.line, f.span.column) == (2, 7)
 
 

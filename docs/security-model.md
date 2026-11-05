@@ -17,7 +17,9 @@
 | The check leaks the data | Sending text to an external model to decide whether it may be sent | Rule findings are replaced with placeholders before any model call (ADR 0002) | Values no rule recognises |
 | The reviewer is manipulated | Inspected text tells the reviewing model to report nothing | Random delimiters, data-not-instructions framing, and rule findings cannot be removed by the model (ADR 0001) | The model may miss semantic findings; rules still apply |
 | The shield becomes the target | An attacker reads the audit database | No text and no raw values stored (ADR 0005); logs carry no content | Masked previews reveal a few characters |
-| Abuse of the API | Flooding, oversized bodies, unauthenticated use on a network | Optional API key with constant-time check, per-client rate limit, size limits, strict CORS | Rate limiting is per instance and in memory |
+| Abuse of the API | Flooding, oversized bodies, unauthenticated use on a network | Optional API key with constant-time check, per-client rate limit (idle clients are forgotten), Content-Length and text-size limits, strict CORS | Rate limiting is per instance and in memory; chunked bodies without a Content-Length are only limited after parsing, so put a body-size limit on the reverse proxy |
+| Regular-expression denial of service | Crafted text that makes a pattern backtrack quadratically | Every repeat in every detector is bounded (DNS-shaped hosts, length-capped tokens, lookbehinds that stop restarts mid-token); a test feeds 12 hostile inputs and fails if any takes longer than the budget | The worst measured case is about 3 s at the 200,000-character limit; lower `SHIELD_MAX_CHARS` if that matters |
+| Argument injection in the CLI | `--diff --output=file` passed to git | Refs that start with `-` are refused; `--` ends git's options | None known |
 
 ## Deployment guidance
 
@@ -25,7 +27,8 @@
   127.0.0.1 only.
 - Prefer a local model (`SHIELD_AI_PROVIDER=ollama`) when policy forbids sending any content to external providers;
   or run with `none`.
-- Keep `backend/.env` out of version control (it is in `.gitignore`).
+- Keep `.env` out of version control (it is in `.gitignore`).
+- Behind a reverse proxy, cap request bodies (about 1 MB is plenty) and request concurrency.
 - Review custom policy packs like code; restricted terms are themselves sensitive, so keep the folder private.
 
 ## Reporting vulnerabilities

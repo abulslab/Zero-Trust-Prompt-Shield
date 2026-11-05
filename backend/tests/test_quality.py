@@ -26,7 +26,7 @@ def test_conflicts_variables_and_dangling_references() -> None:
 
 
 def test_lint_counts_sensitive_data_against_safety(shield: Shield) -> None:
-    report, _ = shield.lint("Summarise the complaint from ana@contoso-mail.com in three bullet points for support.")
+    report, _ = shield.lint("Summarise the complaint from ana@contoso.example in three bullet points for support.")
     assert any(i.id == "PQ100" for i in report.issues) and report.dimensions["safety"] < 100
 
 
@@ -43,10 +43,10 @@ def test_model_rewrite_is_kept_when_it_passes_checks() -> None:
         "Return a Markdown table with columns ID, Steps, Expected result. Contact: <<EMAIL_1>>."
     )
     shield, provider = shield_with([json.dumps({"rewrite": good, "changes": ["Added role", "Added format"]})])
-    r = shield.optimizer.optimize("write tests for login of {{app}} and email ana@contoso-mail.com")
+    r = shield.optimizer.optimize("write tests for login of {{app}} and email ana@contoso.example")
     assert r.engine == "model", [c for c in r.checks if not c.passed]
-    assert "ana@contoso-mail.com" in r.rewrite and "<<EMAIL_1>>" in r.safe_rewrite
-    assert "ana@contoso-mail.com" not in provider.calls[0][1]
+    assert "ana@contoso.example" in r.rewrite and "<<EMAIL_1>>" in r.safe_rewrite
+    assert "ana@contoso.example" not in provider.calls[0][1]
 
 
 def test_model_rewrite_that_drops_a_variable_is_rejected() -> None:

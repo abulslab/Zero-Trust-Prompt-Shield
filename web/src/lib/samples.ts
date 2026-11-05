@@ -7,7 +7,7 @@ export const samples: { id: string; label: string; direction: string; content_ty
     label: "Support ticket with personal data",
     direction: "input",
     content_type: "prompt",
-    text: "Summarise this ticket for the escalation team.\n\nCustomer Maria Gonzalez (maria.gonzalez@contoso-mail.com, +44 20 7946 0958) says card 4539 1488 0343 6467 was charged twice. Refund to GB82 WEST 1234 5698 7654 32.",
+    text: "Summarise this ticket for the escalation team.\n\nCustomer Maria Gonzalez (maria.gonzalez@contoso.example, +44 20 7946 0958) says card 4111 1111 1111 1111 was charged twice. Refund to GB82 WEST 1234 5698 7654 32.",
   },
   {
     id: "debug",

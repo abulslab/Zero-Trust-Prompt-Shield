@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.2 (2026-11-05)
+
+Pre-publication security and hygiene review.
+
+- Security: bounded every open-ended repeat in the detector patterns after a hostile input made the internal-host rule
+  take 98 s on 200,000 characters (now about 0.3 s; worst case across 23 hostile inputs about 3 s). A new test fails
+  the build if any of 12 hostile inputs exceeds its time budget.
+- Security: `promptshield scan --diff` refuses refs that look like git options; the API rate limiter forgets idle
+  clients; a malformed Content-Length is a 400, not a 500.
+- Test and demo data use only reserved or published sample values: `.example` domains, Visa's test card number, the
+  SSA's published sample SSN, Ofcom's drama phone range and the standard example IBAN. Screenshots retaken.
+- Dependencies: a scoped override moves the ESLint toolchain's `minimatch` past a moderate advisory; `npm audit` and
+  `pip-audit` report nothing for the project.
+
 ## 1.0.1 (2026-11-05)
 
 Hardening from live testing with a local model (Ollama `qwen2.5:7b`).

@@ -74,10 +74,10 @@ def build() -> list[Sample]:
             content_type=ContentType.DIFF,
         ),
         # ---- personal and financial data ---------------------------------------------------------------------------------
-        _s("pii-email", "Please draft a reply to maria.gonzalez@contoso-mail.com about her refund.", "pii"),
+        _s("pii-email", "Please draft a reply to maria.gonzalez@contoso.example about her refund.", "pii"),
         _s("pii-phone", "Call the customer back on +44 20 7946 0958 after 3pm.", "pii"),
-        _s("pii-ssn", "Applicant SSN 512-48-3267, date of birth 04/11/1986.", "pii"),
-        _s("fin-card", "Charge card 4539 1488 0343 6467 exp 09/28 for the renewal.", "financial"),
+        _s("pii-ssn", "Applicant SSN 219-09-9999, date of birth 04/11/1986.", "pii"),
+        _s("fin-card", "Charge card 4111 1111 1111 1111 exp 09/28 for the renewal.", "financial"),
         _s("fin-iban", "Wire the deposit to GB82 WEST 1234 5698 7654 32 by Friday.", "financial"),
         # ---- network -------------------------------------------------------------------------------------------------------
         _s("net-ip", "The cache node at 10.42.7.19 keeps evicting keys, why?", "network"),

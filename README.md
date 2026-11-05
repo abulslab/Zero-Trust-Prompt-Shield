@@ -80,6 +80,9 @@ use. Gemini results will be added once measured.
     <td><img src="docs/images/inspect-findings.jpg" alt="Findings with severity, policy action, masked value and the AI-verified badge"/></td>
     <td><img src="docs/images/policies.jpg" alt="Policy packs as YAML with ordered rules"/></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/overview.jpg" alt="Overview: inspections, decisions and findings by category, with no text stored"/></td>
+  </tr>
 </table>
 
 ## Quick start
@@ -143,7 +146,7 @@ overrides both), and are retried once on a server error. All settings are listed
 
 ```bash
 curl -s localhost:5380/v1/inspect -H "Content-Type: application/json" \
-  -d '{"content": "Email ana@contoso-mail.com about the refund", "direction": "input"}'
+  -d '{"content": "Email ana@contoso.example about the refund", "direction": "input"}'
 ```
 
 **CLI and CI**
@@ -211,14 +214,14 @@ backend/src/promptshield/
   api/           FastAPI app
   cli.py         command line
   eval/          labelled corpus and benchmark
-backend/tests/   74 tests, including a scripted model for every AI path
+backend/tests/   88 tests, including a scripted model for every AI path and hostile-input timing
 web/             Next.js UI
 docs/            architecture, ADRs, threat model, integrations, roadmap, screenshots
 ```
 
 ## Quality
 
-- 74 backend tests; ruff, mypy, ESLint and a TypeScript check; all in CI with a Docker build.
+- 88 backend tests, including a regular-expression denial-of-service guard; ruff, mypy, ESLint and a TypeScript check; all in CI with a Docker build.
 - A labelled corpus of 41 samples with hard negatives (hashes, UUIDs, placeholders, environment references, removed
   diff lines, public IPs, security discussions). `promptshield benchmark` fails the build on any missed sample.
 - Credential-shaped test values are assembled at run time, so the repository holds nothing a secret scanner would flag.

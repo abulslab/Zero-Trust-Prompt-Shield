@@ -22,26 +22,26 @@ def test_health_and_meta(shield: Shield) -> None:
 
 def test_inspect_returns_masked_findings_and_audit_keeps_no_raw_text(shield: Shield) -> None:
     c = client(shield)
-    text = f"mail ana@contoso-mail.com token {gh_token()}"
+    text = f"mail ana@contoso.example token {gh_token()}"
     r = c.post("/v1/inspect", json={"content": text})
     assert r.status_code == 200
     body = r.json()
     assert body["decision"]["action"] == "block"
-    assert gh_token() not in r.text and "ana@contoso-mail.com" not in r.text
+    assert gh_token() not in r.text and "ana@contoso.example" not in r.text
     assert r.headers["x-request-id"] and r.headers["cache-control"] == "no-store"
     stored = c.get(f"/v1/audit/{body['id']}").text
     assert (
-        gh_token() not in stored and "ana@contoso-mail.com" not in stored and "contoso" in stored
+        gh_token() not in stored and "ana@contoso.example" not in stored and "contoso" in stored
     )  # masked preview only
     assert c.get("/v1/stats").json()["inspections"] == 1
 
 
 def test_redact_and_restore_roundtrip(shield: Shield) -> None:
     c = client(shield)
-    r = c.post("/v1/redact", json={"content": "Ask ana@contoso-mail.com"}).json()
+    r = c.post("/v1/redact", json={"content": "Ask ana@contoso.example"}).json()
     assert r["redacted"] == "Ask <<EMAIL_1>>"
     back = c.post("/v1/restore", json={"content": "Hi <<EMAIL_1>>", "mapping": r["mapping"]}).json()
-    assert back["restored"] == "Hi ana@contoso-mail.com"
+    assert back["restored"] == "Hi ana@contoso.example"
 
 
 def test_unknown_policy_and_oversized_input(shield: Shield) -> None:
@@ -76,14 +76,14 @@ def test_api_key_is_enforced(shield: Shield) -> None:
 
 def test_feedback_suppresses(shield: Shield) -> None:
     c = client(shield)
-    f = c.post("/v1/inspect", json={"content": "mail ana@contoso-mail.com"}).json()["findings"][0]
+    f = c.post("/v1/inspect", json={"content": "mail ana@contoso.example"}).json()["findings"][0]
     assert (
         c.post(
             "/v1/feedback", json={"finding_id": f["id"], "rule_id": f["rule_id"], "verdict": "false_positive"}
         ).status_code
         == 201
     )
-    again = c.post("/v1/inspect", json={"content": "mail ana@contoso-mail.com"}).json()
+    again = c.post("/v1/inspect", json={"content": "mail ana@contoso.example"}).json()
     assert again["decision"]["action"] == "allow" and again["findings"][0]["suppressed"]
     assert c.delete(f"/v1/feedback/{f['id']}").status_code == 200
 
@@ -100,11 +100,11 @@ def test_guard_redacts_before_the_model_and_restores_after() -> None:
     shield, provider = shield_with(["Sure, I will email <<EMAIL_1>> today."])
     c = client(shield)
     r = c.post(
-        "/v1/guard/chat", json={"messages": [{"role": "user", "content": "Draft a note to ana@contoso-mail.com"}]}
+        "/v1/guard/chat", json={"messages": [{"role": "user", "content": "Draft a note to ana@contoso.example"}]}
     ).json()
     assert r["status"] == "answered"
-    assert r["answer"] == "Sure, I will email ana@contoso-mail.com today."
-    assert "ana@contoso-mail.com" not in provider.calls[0][1]
+    assert r["answer"] == "Sure, I will email ana@contoso.example today."
+    assert "ana@contoso.example" not in provider.calls[0][1]
 
 
 def test_guard_blocks_secrets_and_indirect_injection_without_calling_the_model() -> None:
@@ -148,3 +148,12 @@ def test_empty_settings_values_fall_back_to_defaults(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("SHIELD_API_KEY", "")
     s = Settings()
     assert s.ai_timeout_s is None and not s.api_key
+
+
+def test_malformed_content_length_is_a_client_error(shield: Shield) -> None:
+    r = client(shield).post(
+        "/v1/inspect",
+        content=b'{"content": "x"}',
+        headers={"Content-Type": "application/json", "Content-Length": "abc"},
+    )
+    assert r.status_code in (400, 422)

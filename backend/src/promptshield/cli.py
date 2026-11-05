@@ -87,7 +87,10 @@ def _shield(policy_dir: str | None, ai: bool) -> Shield:
 
 def _targets(args: argparse.Namespace) -> list[tuple[str, str, ContentType]]:
     if args.diff is not None:
-        cmd = ["git", "diff", "--unified=0", "--no-color"] + ([args.diff] if args.diff else ["--cached"])
+        if args.diff.startswith("-"):
+            # A "ref" such as --output=file would be read by git as an option.
+            raise ValueError(f"--diff expects a git ref, not an option: {args.diff!r}")
+        cmd = ["git", "diff", "--unified=0", "--no-color"] + ([args.diff, "--"] if args.diff else ["--cached", "--"])
         out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
         return _split_diff(out)
     if not args.paths or args.paths == ["-"]:
