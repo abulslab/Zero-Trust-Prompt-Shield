@@ -1,0 +1,33 @@
+# The whole system with one command:
+#   docker compose up --build            # UI http://localhost:3200, API http://localhost:5380/docs
+# Model keys pass through from your environment or .env (never commit it). Without one, everything runs rules-only.
+# Ports are published on this machine only. To expose them, set SHIELD_API_KEY first.
+name: prompt-shield
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports: ["127.0.0.1:5380:5380"]
+    environment:
+      SHIELD_CORS_ORIGINS: '["http://localhost:3200","http://127.0.0.1:3200"]'
+      SHIELD_API_KEY: ${SHIELD_API_KEY:-}
+      SHIELD_AI_PROVIDER: ${SHIELD_AI_PROVIDER:-none}
+      SHIELD_OLLAMA_URL: ${SHIELD_OLLAMA_URL:-http://host.docker.internal:11434}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes: ["shield-data:/data"]
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5380
+    ports: ["127.0.0.1:3200:3200"]
+    depends_on: [api]
+
+volumes:
+  shield-data:

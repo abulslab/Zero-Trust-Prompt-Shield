@@ -1,0 +1,22 @@
+id: developer
+name: Developer
+description: >
+  For coding assistants and local models. Blocks only live credentials; everything else is a warning so developers
+  stay in flow, with redaction of personal data.
+ai_review: "off"
+block_score: 100
+detectors: [secrets, pii, network, injection, entropy]
+custom_terms: []
+rules:
+  - when: { category: secret, min_severity: critical }
+    action: block
+    reason: A live credential is about to leave the machine.
+  - when: { category: secret }
+    action: warn
+  - when: { category: [pii, financial] }
+    action: redact
+    reason: Personal data is replaced with placeholders.
+  - when: { category: [injection, obfuscation, exfiltration], direction: [context, output] }
+    action: block
+    reason: Untrusted content or the model's answer carries an injection.
+default_action: warn

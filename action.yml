@@ -1,0 +1,48 @@
+name: Zero-Trust Prompt Shield
+description: Scan prompts, code and diffs for credentials, personal data and prompt injections before they reach an LLM.
+author: abulslab
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  paths:
+    description: Files or folders to scan (space separated). Ignored when diff-base is set.
+    default: "."
+  diff-base:
+    description: Scan only lines added since this ref (for example origin/main). Needs fetch-depth 0.
+    default: ""
+  policy:
+    description: Policy pack id (balanced, strict, developer, rag-ingestion).
+    default: balanced
+  fail-on:
+    description: Fail the step at this decision or above (allow, warn, redact, block).
+    default: block
+  sarif:
+    description: Also write SARIF to this file for code scanning.
+    default: ""
+  python-version:
+    description: Python used to run the scanner.
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - shell: bash
+      run: python -m pip install --quiet "${{ github.action_path }}"
+    - shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        DIFF_BASE: ${{ inputs.diff-base }}
+        POLICY: ${{ inputs.policy }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        SARIF: ${{ inputs.sarif }}
+      run: |
+        if [ -n "$DIFF_BASE" ]; then TARGET=(--diff "$DIFF_BASE...HEAD"); else read -r -a TARGET <<< "$PATHS"; fi
+        if [ -n "$SARIF" ]; then
+          promptshield scan "${TARGET[@]}" --policy "$POLICY" --fail-on allow --format sarif > "$SARIF" || true
+        fi
+        promptshield scan "${TARGET[@]}" --policy "$POLICY" --fail-on "$FAIL_ON"

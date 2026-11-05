@@ -1,0 +1,7 @@
+- id: promptshield
+  name: Zero-Trust Prompt Shield
+  description: Block commits that add credentials, personal data or prompt injections.
+  entry: promptshield scan --diff
+  language: python
+  pass_filenames: false
+  always_run: true

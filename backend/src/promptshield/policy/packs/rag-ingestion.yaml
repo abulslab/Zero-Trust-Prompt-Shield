@@ -1,0 +1,21 @@
+id: rag-ingestion
+name: RAG ingestion
+description: >
+  For documents and tool results entering a model's context (retrieval, browsing, agents). Focuses on indirect
+  prompt injection, hidden text and exfiltration channels, and redacts personal data before indexing.
+ai_review: "auto"
+block_score: 90
+detectors: [secrets, pii, injection, entropy, confidential]
+custom_terms: []
+rules:
+  - when: { category: [injection, obfuscation, exfiltration] }
+    action: block
+    reason: The document carries instructions or hidden content aimed at the model; quarantine it.
+  - when: { category: secret }
+    action: redact
+    reason: Credentials are removed before the document is indexed.
+  - when: { category: [pii, financial] }
+    action: redact
+    reason: Personal data is replaced before the document is indexed.
+  - when: { category: confidential }
+    action: warn

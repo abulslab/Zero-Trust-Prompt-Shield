@@ -1,0 +1,25 @@
+id: strict
+name: Strict (regulated)
+description: >
+  For regulated data and external providers. Anything sensitive blocks the request; AI review always runs when a
+  model is configured, and the risk threshold for blocking is low.
+ai_review: "on"
+block_score: 70
+detectors: [secrets, pii, network, injection, entropy, confidential]
+custom_terms: []
+rules:
+  - when: { category: [secret, financial] }
+    action: block
+    reason: Credentials and financial data are not allowed under the strict policy.
+  - when: { category: [injection, obfuscation, exfiltration] }
+    action: block
+    reason: Injection, obfuscation and exfiltration patterns are blocked in every direction.
+  - when: { category: pii, min_severity: high }
+    action: block
+    reason: High-risk personal data (government identifiers, health) is not allowed.
+  - when: { category: [pii, network] }
+    action: redact
+    reason: Personal and network data are replaced with placeholders.
+  - when: { category: confidential }
+    action: block
+    reason: Confidential organisational information may not leave under the strict policy.

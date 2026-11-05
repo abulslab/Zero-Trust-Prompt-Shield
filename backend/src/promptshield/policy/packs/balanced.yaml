@@ -1,0 +1,38 @@
+id: balanced
+name: Balanced
+description: >
+  The default. Blocks credentials and injections aimed at the model from untrusted context, redacts personal,
+  financial and network data so the prompt can still be sent, and warns on confidentiality markers.
+ai_review: "auto"
+block_score: 99
+detectors: [secrets, pii, network, injection, entropy, confidential]
+custom_terms: []
+rules:
+  - when: { category: secret, min_confidence: 0.6 }
+    action: block
+    reason: Credentials must never be sent to a model; remove and rotate them.
+  - when: { category: secret }
+    action: warn
+  - when: { category: [injection, obfuscation, exfiltration], direction: context }
+    action: block
+    reason: Untrusted content tries to instruct the model (indirect prompt injection).
+  - when: { category: [injection, obfuscation, exfiltration], direction: output }
+    action: block
+    reason: The model's answer contains an injection or exfiltration channel.
+  - when: { category: [injection, obfuscation, exfiltration] }
+    action: warn
+    reason: The prompt contains jailbreak or injection patterns.
+  - when: { category: financial }
+    action: redact
+    reason: Payment and bank data are replaced with placeholders.
+  - when: { category: pii }
+    action: redact
+    reason: Personal data is replaced with placeholders.
+  - when: { category: network }
+    action: redact
+    reason: Internal addresses are replaced with placeholders.
+  - when: { category: confidential, min_severity: high }
+    action: redact
+    reason: Restricted organisational information is replaced with placeholders.
+  - when: { category: confidential }
+    action: warn
