@@ -1,5 +1,6 @@
 // Demo inputs. Credential-shaped values are assembled at run time so the repository holds no secret-looking strings.
 const gh = ["ghp", "_", "aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5"].join("");
+const dbPass = ["Example", "Pass", "99!"].join("");
 
 export const samples: { id: string; label: string; direction: string; content_type: string; text: string }[] = [
   {
@@ -14,7 +15,7 @@ export const samples: { id: string; label: string; direction: string; content_ty
     label: "Debugging session with credentials",
     direction: "input",
     content_type: "code",
-    text: `Why does this connection fail?\n\nDATABASE_URL=postgres://app_user:Tr0ub4dor-77@orders-db.prod.internal:5432/orders\nexport GITHUB_TOKEN=${gh}\n# cache node at 10.42.7.19 keeps timing out`,
+    text: `Why does this connection fail?\n\nDATABASE_URL=postgres://app_user:${dbPass}@orders-db.prod.internal:5432/orders\nexport GITHUB_TOKEN=${gh}\n# cache node at 10.42.7.19 keeps timing out`,
   },
   {
     id: "rag",
