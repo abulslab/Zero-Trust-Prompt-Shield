@@ -16,7 +16,7 @@ the text it protected.
 > an instruction hidden in prose), but a proposal counts only once the engine has tied it to an exact span of the text.
 > The model never sees the values the rules already found, and everything works with no model at all.
 
-![Inspect: rules find the email, phone, card and IBAN; a model adds the customer account ID, verified against the exact text](docs/images/inspect-highlighted.jpg?v=3)
+![Inspect: rules find the email, phone, card and IBAN; a model adds the customer account ID, verified against the exact text](docs/images/shield-inspect-highlighted.jpg)
 
 ---
 
@@ -80,29 +80,19 @@ Every model proposal passes these deterministic checks before it becomes a findi
 
 Each of these rules exists because a live model broke it during testing; each has a regression test.
 
-## Measured with Gemini and a local model
-
-Measured on 2026-11-05 with both **Google Gemini (`gemini-3.5-flash`)** and **Ollama (`qwen2.5:7b`)** running locally, using the demo inputs in the UI:
-
-| Path | Gemini (`gemini-3.5-flash`) | Local Ollama (`qwen2.5:7b`) |
-|---|---|---|
-| **AI review** | On the support ticket, rules caught the email, phone, card and IBAN in **9–12 ms**; Gemini added the customer account identifier (`Account #AC-90421`, `ai.customer_information`) in **4.5–10 s** (1 proposed, 1 verified, 0 rejected). On the strategy note, Gemini added the pricing plan (`ai.business_strategy`) and fraud threshold (`ai.security_control`) in **4.3 s**, while the verifier rejected 1 non-identifying label. **Zero rule-detected values were ever sent to Gemini.** | Across runs on a support note with a token, an email, a customer, an internal fraud rule and a pricing plan, the model added the customer's identifier, the bank, the fraud-control detail and the pricing plan; the verifier rejected paraphrases, placeholder-only quotes and a mislabelled "injection". About 13 to 40 seconds per review. |
-| **Prompt optimiser** | Rewrote the demo prompts and **passed all 5 deterministic verification checks** (`58 Grade D -> 98 Grade A`, and `27 Grade E -> 55 Grade D` preserving `{{version}}`). | Passed every check in 2 of 6 runs (score 52 to 76 and 88). In three runs it invented placeholders or lowered the score, and one hit a transient Ollama error; each time the structured rewrite was returned instead (score 52 to 74). About 20 to 65 seconds. |
-| **Guarded chat** | Received `<<EMAIL_1>>` plus the `ZXQ-` canary instruction; answered in **3.4–5.9 s** (`canary_verified: true`, `tainted_sinks: []`), and the original address (`customer.demo@example.com`) was restored in the answer. | Received `<<EMAIL_1>>` and restored the original address in **5 to 8 s**. With an injection in the tool output, the request was blocked before the model was called. |
-
-A 7B local model finds less than a frontier hosted model and varies from run to run; the deterministic verifier is what makes both safe to use.
+## Interface tour
 
 <table>
   <tr>
-    <td><img src="docs/images/guarded-chat.jpg?v=3" alt="Guarded chat: the model received a placeholder and the original email was restored in its answer"/></td>
-    <td><img src="docs/images/prompt-studio.jpg?v=3" alt="Prompt studio: Gemini's rewrite improved the score from 58 (D) to 98 (A) and passed all 5 verification checks"/></td>
+    <td><img src="docs/images/shield-guarded-chat.jpg" alt="Guarded chat: the model received a placeholder and the original email was restored in its answer"/></td>
+    <td><img src="docs/images/shield-prompt-studio.jpg" alt="Prompt studio: rewrite improved the score from 58 (D) to 98 (A) and passed all 5 verification checks"/></td>
   </tr>
   <tr>
-    <td><img src="docs/images/inspect-findings.jpg?v=3" alt="Findings with severity, policy action, masked value and the AI-verified badge"/></td>
-    <td><img src="docs/images/policies.jpg?v=3" alt="Policy packs as YAML with ordered rules"/></td>
+    <td><img src="docs/images/shield-inspect-findings.jpg" alt="Findings with severity, policy action, masked value and the AI-verified badge"/></td>
+    <td><img src="docs/images/shield-policies.jpg" alt="Policy packs as YAML with ordered rules"/></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/images/overview.jpg?v=3" alt="Overview: inspections, decisions and findings by category, with no text stored"/></td>
+    <td colspan="2"><img src="docs/images/shield-overview.jpg" alt="Overview: inspections, decisions and findings by category, with no text stored"/></td>
   </tr>
 </table>
 
