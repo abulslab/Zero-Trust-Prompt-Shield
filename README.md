@@ -16,7 +16,7 @@ the text it protected.
 > an instruction hidden in prose), but a proposal counts only once the engine has tied it to an exact span of the text.
 > The model never sees the values the rules already found, and everything works with no model at all.
 
-![Inspect: rules find the email, phone, card and IBAN; a local model adds the customer's name, verified against the exact text](docs/images/inspect-highlighted.jpg)
+![Inspect: rules find the email, phone, card and IBAN; a model adds the customer account ID, verified against the exact text](docs/images/inspect-highlighted.jpg?v=3)
 
 ---
 
@@ -94,15 +94,15 @@ A 7B local model finds less than a frontier hosted model and varies from run to 
 
 <table>
   <tr>
-    <td><img src="docs/images/guarded-chat.jpg" alt="Guarded chat: the model received a placeholder and the real email was restored in its answer"/></td>
-    <td><img src="docs/images/prompt-studio.jpg" alt="Prompt studio: Gemini's rewrite improved the score from 58 (D) to 98 (A) and passed all 5 verification checks"/></td>
+    <td><img src="docs/images/guarded-chat.jpg?v=3" alt="Guarded chat: the model received a placeholder and the original email was restored in its answer"/></td>
+    <td><img src="docs/images/prompt-studio.jpg?v=3" alt="Prompt studio: Gemini's rewrite improved the score from 58 (D) to 98 (A) and passed all 5 verification checks"/></td>
   </tr>
   <tr>
-    <td><img src="docs/images/inspect-findings.jpg" alt="Findings with severity, policy action, masked value and the AI-verified badge"/></td>
-    <td><img src="docs/images/policies.jpg" alt="Policy packs as YAML with ordered rules"/></td>
+    <td><img src="docs/images/inspect-findings.jpg?v=3" alt="Findings with severity, policy action, masked value and the AI-verified badge"/></td>
+    <td><img src="docs/images/policies.jpg?v=3" alt="Policy packs as YAML with ordered rules"/></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/images/overview.jpg" alt="Overview: inspections, decisions and findings by category, with no text stored"/></td>
+    <td colspan="2"><img src="docs/images/overview.jpg?v=3" alt="Overview: inspections, decisions and findings by category, with no text stored"/></td>
   </tr>
 </table>
 
