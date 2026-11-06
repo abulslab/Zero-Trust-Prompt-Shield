@@ -27,7 +27,7 @@ def test_scan_clean_passes(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captu
 
 
 def test_scan_sarif(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    code, out = run(monkeypatch, capsys, "mail ana@contoso.example", "scan", "--format", "sarif", "--fail-on", "redact")
+    code, out = run(monkeypatch, capsys, "mail user1@example.com", "scan", "--format", "sarif", "--fail-on", "redact")
     sarif = json.loads(out)
     assert code == 1 and sarif["runs"][0]["results"][0]["ruleId"] == "pii.email"
 
@@ -35,7 +35,7 @@ def test_scan_sarif(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixtu
 def test_lint_and_redact(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     code, out = run(monkeypatch, capsys, "make it better", "lint", "--min-score", "90")
     assert code == 1 and "PQ001" in out
-    code, out = run(monkeypatch, capsys, "Ask ana@contoso.example", "redact")
+    code, out = run(monkeypatch, capsys, "Ask user1@example.com", "redact")
     assert code == 0 and out == "Ask <<EMAIL_1>>"
 
 

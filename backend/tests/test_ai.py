@@ -10,8 +10,8 @@ from promptshield.domain import Action, Category, Direction, Origin
 from promptshield.service import InspectOptions
 
 TEXT = (
-    "Customer Jane Whitfield from Northwind Bank is unhappy. Our fraud model flags transfers above 9,000 "
-    f"when the account is under 30 days old. Her email is jane@northwind-bank.example and token {gh_token()}."
+    "Customer DemoUser Alpha from ExampleBank is unhappy. Our fraud model flags transfers above 9,000 "
+    f"when the account is under 30 days old. Their email is user1@example-bank.example and token {gh_token()}."
 )
 
 
@@ -21,7 +21,7 @@ def proposal(*items: dict[str, object]) -> str:
 
 def test_verified_proposals_become_findings_and_inventions_are_rejected() -> None:
     reply = proposal(
-        {"category": "personal_data", "evidence": "Jane Whitfield", "reason": "A customer's name.", "confidence": 0.9},
+        {"category": "personal_data", "evidence": "DemoUser Alpha", "reason": "A customer's name.", "confidence": 0.9},
         {
             "category": "security_control",
             "evidence": "flags transfers above 9,000 when the account is under 30 days old",
@@ -30,12 +30,12 @@ def test_verified_proposals_become_findings_and_inventions_are_rejected() -> Non
         },
         {
             "category": "business_strategy",
-            "evidence": "plans to acquire Contoso",
+            "evidence": "plans to acquire ExampleCorp",
             "reason": "Invented.",
             "confidence": 0.9,
         },
-        {"category": "made_up", "evidence": "Northwind Bank", "reason": "?", "confidence": 0.9},
-        {"category": "customer_information", "evidence": "Northwind Bank", "reason": "Customer.", "confidence": 0.3},
+        {"category": "made_up", "evidence": "ExampleBank", "reason": "?", "confidence": 0.9},
+        {"category": "customer_information", "evidence": "ExampleBank", "reason": "Customer.", "confidence": 0.3},
         {"category": "personal_data", "evidence": "<<EMAIL_1>>", "reason": "Email.", "confidence": 0.9},
     )
     shield, _ = shield_with([reply])
@@ -46,14 +46,14 @@ def test_verified_proposals_become_findings_and_inventions_are_rejected() -> Non
     reasons = " ".join(x.reason for x in r.ai.rejections)
     assert "invented" in reasons and "taxonomy" in reasons and "Confidence" in reasons and "placeholder" in reasons
     name = next(f for f in ai if f.rule_id == "ai.personal_data")
-    assert TEXT[name.span.start : name.span.end] == "Jane Whitfield"
+    assert TEXT[name.span.start : name.span.end] == "DemoUser Alpha"
 
 
 def test_model_never_sees_values_the_rules_found() -> None:
     shield, provider = shield_with([proposal()])
     shield.inspect(TEXT, InspectOptions(ai="on"))
     _, user = provider.calls[0]
-    assert gh_token() not in user and "jane@northwind-bank.example" not in user
+    assert gh_token() not in user and "user1@example-bank.example" not in user
     assert "<<GITHUB_TOKEN_1>>" in user and "<<EMAIL_1>>" in user
 
 
@@ -143,13 +143,13 @@ def test_gateway_timeout_defaults_depend_on_provider() -> None:
 
 def test_quote_running_over_handled_values_is_trimmed_and_rules_keep_their_findings() -> None:
     # Seen live with qwen2.5:7b: the model quoted a name together with the placeholders around it.
-    text = "Customer Maria Gonzalez (maria@contoso.example) asked for a refund to GB82 WEST 1234 5698 7654 32."
+    text = "Customer DemoUser Alpha (user1@example.com) asked for a refund to GB82 WEST 1234 5698 7654 32."
     shield, _ = shield_with(
         [
             proposal(
                 {
                     "category": "personal_data",
-                    "evidence": "Customer Maria Gonzalez (<<EMAIL_1>>)",
+                    "evidence": "Customer DemoUser Alpha (<<EMAIL_1>>)",
                     "reason": "Name.",
                     "confidence": 0.9,
                 },
@@ -161,13 +161,13 @@ def test_quote_running_over_handled_values_is_trimmed_and_rules_keep_their_findi
     rules = {f.rule_id for f in r.findings if f.origin == Origin.RULE}
     ai = [f for f in r.findings if f.origin == Origin.MODEL]
     assert {"pii.email", "financial.iban"} <= rules
-    assert [text[f.span.start : f.span.end] for f in ai] == ["Customer Maria Gonzalez"]
+    assert [text[f.span.start : f.span.end] for f in ai] == ["Customer DemoUser Alpha"]
     assert len(r.ai.rejections) == 1  # "refund to <<IBAN_1>>" names nobody once the handled value is removed
 
 
 def test_personal_data_quote_must_name_someone() -> None:
     # Seen live with qwen2.5:7b: "was charged twice. Refund to" reported as personal data.
-    text = "The card was charged twice. Refund to the original card. Ask Priya Raman to approve it."
+    text = "The card was charged twice. Refund to the original card. Ask Reviewer Alpha to approve it."
     shield, _ = shield_with(
         [
             proposal(
@@ -177,24 +177,24 @@ def test_personal_data_quote_must_name_someone() -> None:
                     "reason": "?",
                     "confidence": 0.9,
                 },
-                {"category": "personal_data", "evidence": "Priya Raman", "reason": "A person.", "confidence": 0.9},
+                {"category": "personal_data", "evidence": "Reviewer Alpha", "reason": "A person.", "confidence": 0.9},
             )
         ]
     )
     r = shield.inspect(text, InspectOptions(ai="on"))
-    assert [text[f.span.start : f.span.end] for f in r.findings if f.origin == Origin.MODEL] == ["Priya Raman"]
+    assert [text[f.span.start : f.span.end] for f in r.findings if f.origin == Origin.MODEL] == ["Reviewer Alpha"]
     assert "no name, number or identifier" in r.ai.rejections[0].reason
 
 
 def test_whole_sentence_quote_is_trimmed_to_the_piece_that_names_someone() -> None:
     # Seen live with qwen2.5:7b: the whole sentence was quoted around four placeholders.
-    text = "Customer Maria Gonzalez (ana@contoso.example) says card 4111 1111 1111 1111 was charged twice. Refund it."
-    quote = "Maria Gonzalez (<<EMAIL_1>>) says card <<CARD_NUMBER_1>> was charged twice. Refund it."
+    text = "Customer DemoUser Alpha (user1@example.com) says card 4111 1111 1111 1111 was charged twice. Refund it."
+    quote = "DemoUser Alpha (<<EMAIL_1>>) says card <<CARD_NUMBER_1>> was charged twice. Refund it."
     shield, _ = shield_with(
         [proposal({"category": "personal_data", "evidence": quote, "reason": "Name.", "confidence": 1.0})]
     )
     r = shield.inspect(text, InspectOptions(ai="on"))
-    assert [text[f.span.start : f.span.end] for f in r.findings if f.origin == Origin.MODEL] == ["Maria Gonzalez"]
+    assert [text[f.span.start : f.span.end] for f in r.findings if f.origin == Origin.MODEL] == ["DemoUser Alpha"]
 
 
 def test_credential_quote_around_a_handled_token_is_rejected() -> None:

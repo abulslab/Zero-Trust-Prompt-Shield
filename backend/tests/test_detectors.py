@@ -69,7 +69,7 @@ def test_validators() -> None:
 
 
 def test_pii_and_network() -> None:
-    r = rules("Mail ana@contoso.example, call +44 20 7946 0958, host 10.4.5.6 and api.prod.internal")
+    r = rules("Mail user1@example.com, call +44 20 7946 0199, host 10.4.5.6 and api.prod.internal")
     assert {"pii.email", "pii.phone", "network.private_ip", "network.internal_host"} <= r
 
 
@@ -119,7 +119,7 @@ def test_security_discussion_is_not_an_injection() -> None:
 
 
 def test_spans_report_line_and_column() -> None:
-    f = detect("first line\nmail: bob@contoso.example")[0]
+    f = detect("first line\nmail: user2@example.com")[0]
     assert (f.span.line, f.span.column) == (2, 7)
 
 

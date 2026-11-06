@@ -63,12 +63,12 @@ export default function PoliciesPage() {
             />
           </Panel>
           <Panel title="Write your own" subtitle="Drop a file like this into the folder named by SHIELD_POLICY_DIR and restart the API.">
-            <Code>{`id: acme
-name: ACME external models
-description: Customer names and code names never leave.
+            <Code>{`id: example-org
+name: Example Org external models
+description: Customer identifiers and internal code names never leave.
 ai_review: "auto"
 block_score: 85
-custom_terms: [Project Falcon, Northwind, ledger-v2]
+custom_terms: [Project-Alpha, ExampleCorp, ledger-v2]
 rules:
   - when: { category: [secret, financial] }
     action: block

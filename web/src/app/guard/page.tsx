@@ -12,7 +12,7 @@ export default function GuardPage() {
   const meta = useApi<any>("/v1/meta");
   const policies = useApi<any[]>("/v1/policies");
   const [system, setSystem] = useState("You are a helpful support assistant. Answer in three short bullet points.");
-  const [user, setUser] = useState("Draft a reply to maria.gonzalez@contoso.example confirming her refund of the duplicate charge.");
+  const [user, setUser] = useState("Draft a reply to customer.demo@example.com confirming the refund of the duplicate charge.");
   const [context, setContext] = useState("");
   const [policy, setPolicy] = useState("");
   const run = useAction((b: any) => post<any>("/v1/guard/chat", b), ["/v1/audit", "/v1/stats"]);

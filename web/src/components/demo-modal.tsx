@@ -8,7 +8,7 @@ const PRESETS = [
     path: "/inspect",
     badge: "Redact · Risk 98",
     tone: "warning" as const,
-    desc: "Rules catch the email, phone, Luhn card number and IBAN in <10ms; the AI reviewer adds the customer's name (Maria Gonzalez), verified against the exact character span.",
+    desc: "Rules catch the email, phone, Luhn card number and IBAN in <10ms; the AI reviewer adds the customer account & address details, verified against the exact character span.",
   },
   {
     title: "Indirect injection + zero-width evasion",
@@ -22,7 +22,7 @@ const PRESETS = [
     path: "/guard",
     badge: "5-Step Gateway",
     tone: "success" as const,
-    desc: "Replaces maria.gonzalez@contoso.example with <<EMAIL_1>>, injects a per-call ZXQ- canary token, calls Gemini/Ollama, verifies output integrity, and restores the real email.",
+    desc: "Replaces customer.demo@example.com with <<EMAIL_1>>, injects a per-call ZXQ- canary token, calls Gemini/Ollama, verifies output integrity, and restores the original email.",
   },
   {
     title: "Prompt Studio (Checked AI Rewrite)",

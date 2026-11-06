@@ -7,7 +7,7 @@ export const samples: { id: string; label: string; direction: string; content_ty
     label: "Support ticket with personal data",
     direction: "input",
     content_type: "prompt",
-    text: "Summarise this ticket for the escalation team.\n\nCustomer Maria Gonzalez (maria.gonzalez@contoso.example, +44 20 7946 0958) says card 4111 1111 1111 1111 was charged twice. Refund to GB82 WEST 1234 5698 7654 32.",
+    text: "Summarise this ticket for the escalation team.\n\nCustomer Account #AC-90421 (customer.demo@example.com, +44 20 7946 0199) says card 4111 1111 1111 1111 was charged twice. Refund to GB82 WEST 1234 5698 7654 32.",
   },
   {
     id: "debug",
@@ -35,7 +35,7 @@ export const samples: { id: string; label: string; direction: string; content_ty
     label: "Confidential strategy notes",
     direction: "input",
     content_type: "prompt",
-    text: "CONFIDENTIAL - internal use only.\nRewrite these notes as an email: we plan to raise enterprise pricing 18% in Q2 and migrate billing to the new ledger before the Northwind renewal.",
+    text: "CONFIDENTIAL - internal use only.\nRewrite these notes as an email: we plan to raise enterprise pricing 18% in Q2 and migrate billing to the new ledger before the ExampleCorp renewal.",
   },
   {
     id: "clean",

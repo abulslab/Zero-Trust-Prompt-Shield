@@ -49,17 +49,21 @@ class GeminiProvider:
         }
         if json_mode:
             body["generationConfig"]["responseMimeType"] = "application/json"
-        for attempt in range(3):
+        fallbacks = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+        for attempt in range(4):
             r = httpx.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
                 headers={"x-goog-api-key": self._key},
                 json=body,
                 timeout=timeout,
             )
-            if r.status_code == 404 and self.model != "gemini-3.5-flash":
-                self.model = "gemini-3.5-flash"
-                continue
-            if r.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+            if r.status_code in (404, 429):
+                nxt = next((m for m in fallbacks if m != self.model), None)
+                if nxt is not None:
+                    fallbacks.remove(nxt)
+                    self.model = nxt
+                    continue
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < 3:
                 time.sleep(0.8 * (attempt + 1))
                 continue
             break

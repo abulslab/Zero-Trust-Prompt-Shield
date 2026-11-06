@@ -86,9 +86,9 @@ Measured on 2026-11-05 with both **Google Gemini (`gemini-3.5-flash`)** and **Ol
 
 | Path | Gemini (`gemini-3.5-flash`) | Local Ollama (`qwen2.5:7b`) |
 |---|---|---|
-| **AI review** | On the support ticket, rules caught the email, phone, card and IBAN in **9 ms**; Gemini added the customer's name (`Maria Gonzalez`, `ai.customer_information`) in **5.3 s** (2 proposed, 2 verified, 0 rejected). On the strategy note, Gemini added the pricing plan (`ai.business_strategy`) and fraud threshold (`ai.security_control`) in **4.3 s**, while the verifier rejected 1 non-identifying customer label. **Zero rule-detected values were ever sent to Gemini.** | Across runs on a support note with a token, an email, a customer, an internal fraud rule and a pricing plan, the model added the customer's name, the bank, the fraud-control detail and the pricing plan; the verifier rejected paraphrases, placeholder-only quotes and a mislabelled "injection". About 13 to 40 seconds per review. |
+| **AI review** | On the support ticket, rules caught the email, phone, card and IBAN in **9–12 ms**; Gemini added the customer account identifier (`Account #AC-90421`, `ai.customer_information`) in **4.5–10 s** (1 proposed, 1 verified, 0 rejected). On the strategy note, Gemini added the pricing plan (`ai.business_strategy`) and fraud threshold (`ai.security_control`) in **4.3 s**, while the verifier rejected 1 non-identifying label. **Zero rule-detected values were ever sent to Gemini.** | Across runs on a support note with a token, an email, a customer, an internal fraud rule and a pricing plan, the model added the customer's identifier, the bank, the fraud-control detail and the pricing plan; the verifier rejected paraphrases, placeholder-only quotes and a mislabelled "injection". About 13 to 40 seconds per review. |
 | **Prompt optimiser** | Rewrote the demo prompts and **passed all 5 deterministic verification checks** (`58 Grade D -> 98 Grade A`, and `27 Grade E -> 55 Grade D` preserving `{{version}}`). | Passed every check in 2 of 6 runs (score 52 to 76 and 88). In three runs it invented placeholders or lowered the score, and one hit a transient Ollama error; each time the structured rewrite was returned instead (score 52 to 74). About 20 to 65 seconds. |
-| **Guarded chat** | Received `<<EMAIL_1>>` plus the `ZXQ-` canary instruction; answered in **3.4–5.9 s** (`canary_verified: true`, `tainted_sinks: []`), and the real address (`maria.gonzalez@contoso.example`) was restored in the answer. | Received `<<EMAIL_1>>` and restored the real address in **5 to 8 s**. With an injection in the tool output, the request was blocked before the model was called. |
+| **Guarded chat** | Received `<<EMAIL_1>>` plus the `ZXQ-` canary instruction; answered in **3.4–5.9 s** (`canary_verified: true`, `tainted_sinks: []`), and the original address (`customer.demo@example.com`) was restored in the answer. | Received `<<EMAIL_1>>` and restored the original address in **5 to 8 s**. With an injection in the tool output, the request was blocked before the model was called. |
 
 A 7B local model finds less than a frontier hosted model and varies from run to run; the deterministic verifier is what makes both safe to use.
 
@@ -168,15 +168,15 @@ overrides both), and are retried once on a server error. All settings are listed
 ```bash
 # 1. Inspect text
 curl -s localhost:5380/v1/inspect -H "Content-Type: application/json" \
-  -d '{"content": "Email ana@contoso.example about the refund", "direction": "input"}'
+  -d '{"content": "Email user1@example.com about the refund", "direction": "input"}'
 
 # 2. Screen an agent tool call before execution
 curl -s localhost:5380/v1/guard/tool -H "Content-Type: application/json" \
-  -d '{"tool_name": "send_email", "arguments": {"to": "ana@contoso.example", "body": "Refund approved"}}'
+  -d '{"tool_name": "send_email", "arguments": {"to": "user1@example.com", "body": "Refund approved"}}'
 
 # 3. Drop-in OpenAI-compatible chat completions proxy
 curl -s localhost:5380/v1/chat/completions -H "Content-Type: application/json" \
-  -d '{"model": "promptshield-guard", "messages": [{"role": "user", "content": "Draft a note to ana@contoso.example"}]}'
+  -d '{"model": "promptshield-guard", "messages": [{"role": "user", "content": "Draft a note to user1@example.com"}]}'
 ```
 
 **CLI and CI**

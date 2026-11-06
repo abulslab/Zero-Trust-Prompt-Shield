@@ -67,7 +67,7 @@ from openai import OpenAI
 client = OpenAI(base_url="http://localhost:5380/v1", api_key="<your-shield-api-key>")
 resp = client.chat.completions.create(
     model="promptshield-guard",
-    messages=[{"role": "user", "content": "Draft a follow-up to ana@contoso.example"}],
+    messages=[{"role": "user", "content": "Draft a follow-up to user1@example.com"}],
 )
 print(resp.choices[0].message.content)
 ```

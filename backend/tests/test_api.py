@@ -22,26 +22,24 @@ def test_health_and_meta(shield: Shield) -> None:
 
 def test_inspect_returns_masked_findings_and_audit_keeps_no_raw_text(shield: Shield) -> None:
     c = client(shield)
-    text = f"mail ana@contoso.example token {gh_token()}"
+    text = f"mail user1@example.com token {gh_token()}"
     r = c.post("/v1/inspect", json={"content": text})
     assert r.status_code == 200
     body = r.json()
     assert body["decision"]["action"] == "block"
-    assert gh_token() not in r.text and "ana@contoso.example" not in r.text
+    assert gh_token() not in r.text and "user1@example.com" not in r.text
     assert r.headers["x-request-id"] and r.headers["cache-control"] == "no-store"
     stored = c.get(f"/v1/audit/{body['id']}").text
-    assert (
-        gh_token() not in stored and "ana@contoso.example" not in stored and "contoso" in stored
-    )  # masked preview only
+    assert gh_token() not in stored and "user1@example.com" not in stored and "example" in stored  # masked preview only
     assert c.get("/v1/stats").json()["inspections"] == 1
 
 
 def test_redact_and_restore_roundtrip(shield: Shield) -> None:
     c = client(shield)
-    r = c.post("/v1/redact", json={"content": "Ask ana@contoso.example"}).json()
+    r = c.post("/v1/redact", json={"content": "Ask user1@example.com"}).json()
     assert r["redacted"] == "Ask <<EMAIL_1>>"
     back = c.post("/v1/restore", json={"content": "Hi <<EMAIL_1>>", "mapping": r["mapping"]}).json()
-    assert back["restored"] == "Hi ana@contoso.example"
+    assert back["restored"] == "Hi user1@example.com"
 
 
 def test_unknown_policy_and_oversized_input(shield: Shield) -> None:
@@ -76,14 +74,14 @@ def test_api_key_is_enforced(shield: Shield) -> None:
 
 def test_feedback_suppresses(shield: Shield) -> None:
     c = client(shield)
-    f = c.post("/v1/inspect", json={"content": "mail ana@contoso.example"}).json()["findings"][0]
+    f = c.post("/v1/inspect", json={"content": "mail user1@example.com"}).json()["findings"][0]
     assert (
         c.post(
             "/v1/feedback", json={"finding_id": f["id"], "rule_id": f["rule_id"], "verdict": "false_positive"}
         ).status_code
         == 201
     )
-    again = c.post("/v1/inspect", json={"content": "mail ana@contoso.example"}).json()
+    again = c.post("/v1/inspect", json={"content": "mail user1@example.com"}).json()
     assert again["decision"]["action"] == "allow" and again["findings"][0]["suppressed"]
     assert c.delete(f"/v1/feedback/{f['id']}").status_code == 200
 
@@ -100,11 +98,11 @@ def test_guard_redacts_before_the_model_and_restores_after() -> None:
     shield, provider = shield_with(["Sure, I will email <<EMAIL_1>> today."])
     c = client(shield)
     r = c.post(
-        "/v1/guard/chat", json={"messages": [{"role": "user", "content": "Draft a note to ana@contoso.example"}]}
+        "/v1/guard/chat", json={"messages": [{"role": "user", "content": "Draft a note to user1@example.com"}]}
     ).json()
     assert r["status"] == "answered"
-    assert r["answer"] == "Sure, I will email ana@contoso.example today."
-    assert "ana@contoso.example" not in provider.calls[0][1]
+    assert r["answer"] == "Sure, I will email user1@example.com today."
+    assert "user1@example.com" not in provider.calls[0][1]
 
 
 def test_guard_blocks_secrets_and_indirect_injection_without_calling_the_model() -> None:
@@ -218,7 +216,7 @@ def test_guard_tool_endpoint_blocks_ssrf_shell_and_tainted_sink(shield: Shield) 
 
     clean = c.post(
         "/v1/guard/tool",
-        json={"tool_name": "DraftEmail", "arguments": {"to": "ana@contoso.example", "subject": "Hello"}},
+        json={"tool_name": "DraftEmail", "arguments": {"to": "user1@example.com", "subject": "Hello"}},
     ).json()
     assert clean["allowed"] is True
     assert clean["redacted_arguments"]["to"] == "[REDACTED:EMAIL]"
@@ -231,7 +229,7 @@ def test_openai_chat_completions_proxy_and_audit_verify() -> None:
         "/v1/chat/completions",
         json={
             "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": "My email is ana@contoso.example"}],
+            "messages": [{"role": "user", "content": "My email is user1@example.com"}],
         },
     )
     assert res.status_code == 200
@@ -239,7 +237,7 @@ def test_openai_chat_completions_proxy_and_audit_verify() -> None:
     assert res.headers["x-shield-canary-verified"] == "true"
     body = res.json()
     assert body["object"] == "chat.completion"
-    assert body["choices"][0]["message"]["content"] == "Hello ana@contoso.example, your ticket is open."
+    assert body["choices"][0]["message"]["content"] == "Hello user1@example.com, your ticket is open."
 
     verify = c.get("/v1/audit/verify").json()
     assert verify["valid"] is True and verify["checked"] >= 1
