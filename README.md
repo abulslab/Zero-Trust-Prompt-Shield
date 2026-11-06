@@ -16,8 +16,6 @@ the text it protected.
 > an instruction hidden in prose), but a proposal counts only once the engine has tied it to an exact span of the text.
 > The model never sees the values the rules already found, and everything works with no model at all.
 
-![Inspect: rules find the email, phone, card and IBAN; a model adds the customer account ID, verified against the exact text](docs/images/shield-inspect-highlighted.jpg)
-
 ---
 
 ## Why
