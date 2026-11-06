@@ -20,11 +20,13 @@ from promptshield.redaction import RedactionMode, redact, restore
 InspectFn = Callable[[str], list[Finding]]
 
 SYSTEM = """You are a prompt engineer. Rewrite the user's prompt so a large language model will answer it more
-reliably. Apply these practices where they help: a clear role, the task stated first and explicitly, the relevant
-context and audience, explicit constraints, the output format and length, delimiters around any pasted data, positive
-instructions instead of prohibitions, and a short example only if format matters.
+reliably. Structure the rewrite with Markdown headings (## Role, ## Task, ## Context, ## Constraints, ## Output format)
+including: a clear role ("You are a ..."), the task stated explicitly, the context/purpose ("for the purpose of ..."),
+positive constraints ("must", "should", "at most"), and an explicit output format (e.g. Markdown bullet list or table).
 
 Hard rules:
+- Replace vague words (better, etc, things, various, appropriate) and unbounded words (everything, all possible, exhaustive) with concrete, bounded criteria.
+- Do not mix conflicting length words (do not combine brief/concise/short with detailed/comprehensive/thorough).
 - Keep the user's intent, language and every fact. Do not add facts, names, numbers or data.
 - Keep every placeholder like <<EMAIL_1>> and every template variable like {{name}} or {name} exactly as written.
 - Do not answer the prompt. Only rewrite it.

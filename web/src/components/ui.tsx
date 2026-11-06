@@ -26,7 +26,7 @@ export function Panel({ title, subtitle, actions, className, children, flush }: 
   return (
     <section className={clsx("rounded-lg border border-slate-200 bg-white", className)}>
       {(title || actions) && (
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-3.5">
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-3">
           <div>
             {title && <h2 className="text-sm font-semibold text-slate-900">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
@@ -34,19 +34,19 @@ export function Panel({ title, subtitle, actions, className, children, flush }: 
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className={flush ? "" : "p-5"}>{children}</div>
+      <div className={flush ? "" : "p-4"}>{children}</div>
     </section>
   );
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
         <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
-        {subtitle && <p className="mt-1 max-w-3xl text-sm text-slate-500">{subtitle}</p>}
+        {subtitle && <p className="mt-1 max-w-2xl text-sm text-slate-500">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 items-center gap-2 pt-0.5">{actions}</div>}
     </div>
   );
 }
@@ -116,7 +116,7 @@ export function Checkbox({ checked, onChange, label, hint, disabled }: { checked
 
 export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: React.ReactNode }[]; value: string; onChange: (id: string) => void }) {
   return (
-    <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
+    <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
       {tabs.map((t) => (
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
           className={clsx("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium", value === t.id ? "border-blue-700 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-800")}>
@@ -132,13 +132,13 @@ export function Table({ head, rows, empty }: { head: React.ReactNode[]; rows: Re
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-xs text-slate-500">{head.map((h, i) => <th key={i} className="whitespace-nowrap px-4 py-2.5 font-medium">{h}</th>)}</tr>
+          <tr className="border-b border-slate-200 text-xs text-slate-500">{head.map((h, i) => <th key={i} className="whitespace-nowrap px-4 py-2 font-medium">{h}</th>)}</tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr><td colSpan={head.length} className="px-4 py-8 text-center text-sm text-slate-500">{empty ?? "Nothing yet."}</td></tr>
           ) : rows.map((r, i) => (
-            <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">{r.map((c, j) => <td key={j} className="px-4 py-2.5 align-top text-slate-700">{c}</td>)}</tr>
+            <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">{r.map((c, j) => <td key={j} className="px-4 py-2 align-top text-slate-700">{c}</td>)}</tr>
           ))}
         </tbody>
       </table>

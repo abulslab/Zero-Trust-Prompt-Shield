@@ -49,12 +49,20 @@ class GeminiProvider:
         }
         if json_mode:
             body["generationConfig"]["responseMimeType"] = "application/json"
-        r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
-            headers={"x-goog-api-key": self._key},
-            json=body,
-            timeout=timeout,
-        )
+        for attempt in range(3):
+            r = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
+                headers={"x-goog-api-key": self._key},
+                json=body,
+                timeout=timeout,
+            )
+            if r.status_code == 404 and self.model != "gemini-3.5-flash":
+                self.model = "gemini-3.5-flash"
+                continue
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+                time.sleep(0.8 * (attempt + 1))
+                continue
+            break
         r.raise_for_status()
         data = r.json()
         parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])

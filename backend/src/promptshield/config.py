@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("GEMINI_API_KEY", "SHIELD_GEMINI_API_KEY")
     )
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b"
     anthropic_api_key: SecretStr | None = Field(

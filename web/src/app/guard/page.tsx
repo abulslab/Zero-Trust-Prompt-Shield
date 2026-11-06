@@ -6,7 +6,7 @@ import { fmt, post, useAction, useApi } from "@/lib/api";
 
 type Msg = { role: string; content: string };
 
-const STEPS = ["Inspect input and context", "Redact to placeholders", "Call the model", "Inspect the answer", "Restore placeholders"];
+const STEPS = ["Inspect input & context", "Redact to placeholders", "Inject canary & call model", "Inspect & taint-check answer", "Restore placeholders"];
 
 export default function GuardPage() {
   const meta = useApi<any>("/v1/meta");
@@ -32,60 +32,72 @@ export default function GuardPage() {
     <>
       <PageHeader
         title="Guarded chat"
-        subtitle="The shield as a gateway: it inspects the conversation and any untrusted context, swaps sensitive values for placeholders, calls the model, inspects the answer, then puts the values back. The model never sees the originals."
+        subtitle="The full zero-trust gateway: inspects conversation and untrusted context, swaps sensitive values for placeholders, injects a per-call canary tripwire, verifies the answer against canary leaks and tainted sinks, then restores placeholders."
       />
       {meta.data && !meta.data.ai.available && (
         <div className="mb-4"><Notice tone="warning">No model is configured on the server, so the guard can inspect and redact but not answer. Set SHIELD_AI_PROVIDER (gemini, ollama, anthropic or openai).</Notice></div>
       )}
-      <Panel className="mb-6">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="System prompt"><Textarea rows={3} value={system} onChange={(e) => setSystem(e.target.value)} /></Field>
-          <Field label="Untrusted context (optional)" hint="A retrieved document or tool result. Judged as context: instructions inside it block the request.">
-            <Textarea rows={3} value={context} onChange={(e) => setContext(e.target.value)} placeholder="Paste a web page, search result or tool output…" />
+      <Panel className="mb-5">
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Field label="System prompt"><Textarea rows={g ? 2 : 3} value={system} onChange={(e) => setSystem(e.target.value)} /></Field>
+          <Field label="Untrusted context (optional)" hint="Retrieved document or tool output; external domains are taint-tracked.">
+            <Textarea rows={g ? 2 : 3} value={context} onChange={(e) => setContext(e.target.value)} placeholder="Paste a web page, search result or tool output…" />
           </Field>
         </div>
-        <Field label="User message" className="mt-4"><Textarea rows={3} value={user} onChange={(e) => setUser(e.target.value)} /></Field>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          <Field label="Policy" className="w-64">
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_14rem_auto] sm:items-end">
+          <Field label="User message"><Textarea rows={2} value={user} onChange={(e) => setUser(e.target.value)} /></Field>
+          <Field label="Policy">
             <Select value={policy} onChange={(e) => setPolicy(e.target.value)}>
               <option value="">Default ({meta.data?.default_policy ?? "balanced"})</option>
               {policies.data?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </Select>
           </Field>
-          <Button onClick={send} disabled={!user.trim() || run.isPending}>{run.isPending ? "Sending…" : "Send through the shield"}</Button>
+          <Button onClick={send} disabled={!user.trim() || run.isPending}>{run.isPending ? "Sending…" : "Send through shield"}</Button>
         </div>
       </Panel>
       <ErrorBox error={run.error} />
 
       {g && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <ol className="grid grid-cols-1 gap-2 sm:grid-cols-5">
             {STEPS.map((s, i) => {
               const done = i < reached;
               const stopped = i === reached && g.status !== "answered";
               return (
-                <li key={s} className={`rounded-md border px-3 py-2 text-xs ${done ? "border-green-200 bg-green-50 text-green-800" : stopped ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-400"}`}>
+                <li key={s} className={`rounded-md border px-3 py-2 text-xs ${done ? "border-emerald-200 bg-emerald-50 text-emerald-800" : stopped ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-400"}`}>
                   <span className="font-semibold">{i + 1}.</span> {s}
                 </li>
               );
             })}
           </ol>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-slate-500">Outcome</span><Badge tone={statusTone(g.status)}>{fmt.label(g.status)}</Badge>
+            {g.canary_verified !== undefined && (
+              <Badge tone={g.canary_verified ? "success" : "danger"}>
+                {g.canary_verified ? "Canary verified" : "Canary leaked"}
+              </Badge>
+            )}
+            <Badge tone={(g.tainted_sinks?.length ?? 0) === 0 ? "success" : "danger"}>
+              {(g.tainted_sinks?.length ?? 0) === 0 ? "Taint check: clean" : `Tainted sink: ${g.tainted_sinks.join(", ")}`}
+            </Badge>
             {g.model && <span className="text-xs text-slate-500">{g.model.provider} · {g.model.model} · {fmt.ms(g.model.latency_ms)}</span>}
             {g.placeholders > 0 && <span className="text-xs text-slate-500">· {g.placeholders} value(s) hidden from the model</span>}
           </div>
           {g.error && <Notice tone="warning">{g.error}</Notice>}
 
-          {g.answer && (
-            <Panel title="Answer" subtitle="Placeholders restored after the answer passed inspection.">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{g.answer}</div>
-            </Panel>
-          )}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {g.answer ? (
+              <Panel title="Restored answer" subtitle="Placeholders restored after the answer passed output, canary, and taint inspection.">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{g.answer}</div>
+              </Panel>
+            ) : (
+              <Panel title="Answer withheld" subtitle="The shield blocked the request before or after the model call.">
+                <p className="text-sm text-slate-600">No answer was released to the caller.</p>
+              </Panel>
+            )}
 
-          <div className="grid gap-6 lg:grid-cols-2">
             <Panel title={g.status === "model_unavailable" ? "What would be sent" : "What the model received"}
-              subtitle={g.status === "model_unavailable" ? "Prepared payload; no model is configured, so nothing left the gateway." : "Exactly what left the gateway."}>
+              subtitle={g.status === "model_unavailable" ? "Prepared payload; no model is configured, so nothing left the gateway." : "Sensitive values were replaced with placeholders before leaving the gateway."}>
               {g.sent.length ? (
                 <div className="space-y-2">
                   {g.sent.map((m: Msg, i: number) => (
@@ -94,10 +106,11 @@ export default function GuardPage() {
                 </div>
               ) : <p className="text-sm text-slate-500">Nothing: the request was stopped before the model.</p>}
             </Panel>
-            <div className="space-y-4">
-              <DecisionBanner r={g.input} />
-              {g.output && <DecisionBanner r={g.output} />}
-            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <DecisionBanner r={g.input} />
+            {g.output && <DecisionBanner r={g.output} />}
           </div>
 
           <Panel title="Input findings" flush><FindingsTable findings={g.input.findings} inspectionId={g.input.id} /></Panel>

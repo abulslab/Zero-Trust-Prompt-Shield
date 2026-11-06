@@ -80,23 +80,22 @@ Every model proposal passes these deterministic checks before it becomes a findi
 
 Each of these rules exists because a live model broke it during testing; each has a regression test.
 
-## Tested with a local model
+## Measured with Gemini and a local model
 
-Measured on 2026-11-05 with **Ollama `qwen2.5:7b`** running locally, using the demo inputs in the UI:
+Measured on 2026-11-05 with both **Google Gemini (`gemini-3.5-flash`)** and **Ollama (`qwen2.5:7b`)** running locally, using the demo inputs in the UI:
 
-| Path | Result |
-|---|---|
-| AI review | On a support note with a token, an email, a customer, an internal fraud rule and a pricing plan, the model added (across runs) the customer's name, the bank, the fraud-control detail and the pricing plan; the rules kept the token and email. The verifier rejected the model's paraphrases, placeholder-only quotes and a mislabelled "injection". **No value the rules had found was ever sent to the model.** About 13 to 40 seconds per review. |
-| Prompt optimiser | The model's rewrite passed every check in 2 of 6 runs (score 52 to 76 and 88). In three runs it invented placeholders or lowered the score, and one hit a transient Ollama error; each time the structured rewrite was returned instead (score 52 to 74). About 20 to 65 seconds. |
-| Guarded chat | The model received `<<EMAIL_1>>`; the real address was restored in its answer. With an injection in the tool output, the request was blocked and the model was never called. About 5 to 8 seconds. |
+| Path | Gemini (`gemini-3.5-flash`) | Local Ollama (`qwen2.5:7b`) |
+|---|---|---|
+| **AI review** | On the support ticket, rules caught the email, phone, card and IBAN in **9 ms**; Gemini added the customer's name (`Maria Gonzalez`, `ai.customer_information`) in **5.3 s** (2 proposed, 2 verified, 0 rejected). On the strategy note, Gemini added the pricing plan (`ai.business_strategy`) and fraud threshold (`ai.security_control`) in **4.3 s**, while the verifier rejected 1 non-identifying customer label. **Zero rule-detected values were ever sent to Gemini.** | Across runs on a support note with a token, an email, a customer, an internal fraud rule and a pricing plan, the model added the customer's name, the bank, the fraud-control detail and the pricing plan; the verifier rejected paraphrases, placeholder-only quotes and a mislabelled "injection". About 13 to 40 seconds per review. |
+| **Prompt optimiser** | Rewrote the demo prompts and **passed all 5 deterministic verification checks** (`58 Grade D -> 98 Grade A`, and `27 Grade E -> 55 Grade D` preserving `{{version}}`). | Passed every check in 2 of 6 runs (score 52 to 76 and 88). In three runs it invented placeholders or lowered the score, and one hit a transient Ollama error; each time the structured rewrite was returned instead (score 52 to 74). About 20 to 65 seconds. |
+| **Guarded chat** | Received `<<EMAIL_1>>` plus the `ZXQ-` canary instruction; answered in **3.4–5.9 s** (`canary_verified: true`, `tainted_sinks: []`), and the real address (`maria.gonzalez@contoso.example`) was restored in the answer. | Received `<<EMAIL_1>>` and restored the real address in **5 to 8 s**. With an injection in the tool output, the request was blocked before the model was called. |
 
-A 7B local model finds less than a large hosted one and varies from run to run; the verifier is what makes it safe to
-use. Gemini results will be added once measured.
+A 7B local model finds less than a frontier hosted model and varies from run to run; the deterministic verifier is what makes both safe to use.
 
 <table>
   <tr>
     <td><img src="docs/images/guarded-chat.jpg" alt="Guarded chat: the model received a placeholder and the real email was restored in its answer"/></td>
-    <td><img src="docs/images/prompt-studio.jpg" alt="Prompt studio: the model's rewrite failed a check, so the structured rewrite was used"/></td>
+    <td><img src="docs/images/prompt-studio.jpg" alt="Prompt studio: Gemini's rewrite improved the score from 58 (D) to 98 (A) and passed all 5 verification checks"/></td>
   </tr>
   <tr>
     <td><img src="docs/images/inspect-findings.jpg" alt="Findings with severity, policy action, masked value and the AI-verified badge"/></td>
@@ -247,14 +246,14 @@ backend/src/promptshield/
   api/           FastAPI app (/v1/inspect, /v1/guard/chat, /v1/guard/tool, /v1/chat/completions, ...)
   cli.py         command line (scan, lint, redact, serve, benchmark, audit-verify)
   eval/          labelled corpus + adversarial mutation resilience suite
-backend/tests/   92 tests, including scripted AI verification, canary/taint/tool guards, and ReDoS timing
+backend/tests/   94 tests, including scripted AI verification, canary/taint/tool guards, and ReDoS timing
 web/             Next.js UI
 docs/            architecture, 10 ADRs, threat model, integrations, roadmap, screenshots
 ```
 
 ## Quality
 
-- 92 backend tests, including a regular-expression denial-of-service guard, shadow de-obfuscation, canary tripwires, cross-boundary taint tracking, agent tool-call guard and tamper-evident audit chain verification; ruff, mypy, ESLint and a TypeScript check; all in CI with a Docker build.
+- 94 backend tests, including a regular-expression denial-of-service guard, shadow de-obfuscation, canary tripwires, cross-boundary taint tracking, agent tool-call guard and tamper-evident audit chain verification; ruff, mypy, ESLint and a TypeScript check; all in CI with a Docker build.
 - A labelled corpus of 41 samples with hard negatives (hashes, UUIDs, placeholders, environment references, removed
   diff lines, public IPs, security discussions) plus 90 adversarial mutation variants. `promptshield benchmark` fails the build on any missed sample.
 - Credential-shaped test values are assembled at run time, so the repository holds nothing a secret scanner would flag.
@@ -265,9 +264,7 @@ docs/            architecture, 10 ADRs, threat model, integrations, roadmap, scr
   review narrow that gap; they do not close it.
 - The benchmark corpus was written alongside the detectors. It shows the rules behave as designed on known cases, not
   real-world accuracy. Add your own samples.
-- Injection detection catches known techniques and obfuscated variants. Treat it as one layer: keep untrusted content
-  delimited, gate tool execution with `/v1/guard/tool`, give agents least privilege, and require confirmation for
-  consequential actions.
+- Injection detection catches known techniques and obfuscated variants (zero-width characters and Cyrillic/Greek/full-width homoglyphs). Canary tripwires catch verbatim, case-folded and standard base64 leaks of the per-request integrity token, not paraphrased descriptions of system instructions; cross-boundary taint tracking matches domain names extracted from URLs and emails in untrusted context. Treat these as defence-in-depth layers: keep untrusted content delimited, gate tool execution with `/v1/guard/tool`, give agents least privilege, and require confirmation for consequential actions.
 - AI review quality depends on the model. Small local models miss things and vary between runs; the verifier stops them
   from inventing findings, not from missing them.
 - The lint score is a heuristic. It flags likely problems; it does not judge whether the task itself is right.

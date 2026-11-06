@@ -42,26 +42,26 @@ export default function InspectPage() {
     <>
       <PageHeader
         title="Inspect"
-        subtitle="Check any text before it reaches a model, or after it leaves one: credentials, personal and financial data, internal infrastructure, injections, hidden text and confidential content."
+        subtitle="Check any text before it reaches a model, or after it leaves one: credentials, personal and financial data, internal infrastructure, obfuscated injections, and confidential content."
         actions={
-          <Select className="w-72" defaultValue="" onChange={(e) => e.target.value && load(e.target.value)} aria-label="Load an example">
+          <Select className="w-68" defaultValue="" onChange={(e) => e.target.value && load(e.target.value)} aria-label="Load an example">
             <option value="">Load an example…</option>
             {samples.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </Select>
         }
       />
 
-      <Panel className="mb-6">
-        <Field label="Text" hint={`${fmt.num(text.length)} characters · the text is inspected, never stored (the audit log keeps a hash and masked previews).`}>
-          <Textarea rows={9} className="font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} />
+      <Panel className="mb-5">
+        <Field label="Text under inspection" hint={`${fmt.num(text.length)} characters · inspected in memory, never stored (audit log records SHA-256 + masked previews only).`}>
+          <Textarea rows={r ? 4 : 6} className="font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} />
         </Field>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Where does this text sit?">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Field label="Direction">
             <Select value={direction} onChange={(e) => setDirection(e.target.value)}>
               {directions.map((d) => <option key={d.v} value={d.v}>{d.l}</option>)}
             </Select>
           </Field>
-          <Field label="Content type" hint="A diff is checked on added lines only.">
+          <Field label="Content type">
             <Select value={contentType} onChange={(e) => setContentType(e.target.value)}>
               {["text", "prompt", "code", "diff", "json"].map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
@@ -73,10 +73,10 @@ export default function InspectPage() {
             </Select>
           </Field>
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <Checkbox checked={useAi} onChange={setUseAi} disabled={!meta.data?.ai?.available}
             label="Semantic review with AI"
-            hint={meta.data?.ai?.available ? `Uses ${meta.data.ai.provider}; findings are redacted before the model sees the text.` : "No model configured on the server: rules only."} />
+            hint={meta.data?.ai?.available ? `Uses ${meta.data.ai.provider} (${meta.data.ai.model}); rule findings are redacted before the model sees the text.` : "No model configured on the server: deterministic rules only."} />
           <Button onClick={go} disabled={!text.trim() || run.isPending}>{run.isPending ? "Inspecting…" : "Inspect"}</Button>
         </div>
       </Panel>
@@ -84,7 +84,7 @@ export default function InspectPage() {
       <ErrorBox error={run.error} />
 
       {r && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <DecisionBanner r={r} />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Findings" value={r.findings.filter((f) => !f.suppressed).length} hint={<Legend counts={r.counts} />} />
@@ -103,9 +103,9 @@ export default function InspectPage() {
             </div>
             {tab === "findings" && <FindingsTable findings={r.findings} inspectionId={r.id} selected={picked} />}
             {tab === "text" && (
-              <div className="px-5 pb-5">
+              <div className="px-5 pb-4">
                 <Highlighted text={submitted} findings={r.findings} onPick={(id) => { setPicked(id); setTab("findings"); }} />
-                <p className="mt-2 text-xs text-slate-500">Click a highlight to open its finding.</p>
+                <p className="mt-2 text-xs text-slate-500">Click any highlight to inspect its rule, severity, and remediation guidance.</p>
               </div>
             )}
             {tab === "safe" && (
@@ -116,11 +116,14 @@ export default function InspectPage() {
                     <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs">{r.redacted}</pre>
                   </>
                 ) : <Notice>The policy did not require any redaction.</Notice>}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button variant="secondary" onClick={() => redact.mutate({ content: submitted, direction, content_type: contentType, policy: policy || null, mode: "placeholder" })}>
-                    Create reversible version
+                    Create placeholder version (&lt;&lt;EMAIL_1&gt;&gt;)
                   </Button>
-                  <span className="text-xs text-slate-500">Replaces every finding with a placeholder (&lt;&lt;EMAIL_1&gt;&gt;). Keep the mapping to restore values in the model&apos;s answer; the server keeps nothing.</span>
+                  <Button variant="secondary" onClick={() => redact.mutate({ content: submitted, direction, content_type: contentType, policy: policy || null, mode: "synthetic" })}>
+                    Create synthetic version (RFC-reserved)
+                  </Button>
+                  <span className="text-xs text-slate-500">Reversible mapping is returned to you only; the server stores nothing.</span>
                 </div>
                 {redact.data && (
                   <div className="grid gap-4 lg:grid-cols-2">

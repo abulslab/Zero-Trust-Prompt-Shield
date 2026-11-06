@@ -134,6 +134,6 @@ Before an agent executes a tool proposed by a model, `POST /v1/guard/tool` inspe
 
 ## 8. Quality
 
-- 92 backend tests (detectors, de-obfuscation shadow view, hostile-input timing, policies, placeholder and synthetic redaction, AI verification with a scripted provider, canary tripwires, taint tracking, tool guard, audit hash chain, prompt quality, API, CLI), ruff and mypy in strict mode, all in CI.
+- 94 backend tests (detectors, de-obfuscation shadow view, hostile-input timing, policies, placeholder and synthetic redaction, AI verification with a scripted provider, canary tripwires, taint tracking, tool guard, audit hash chain, prompt quality, API, CLI), ruff and mypy in strict mode, all in CI.
 - A labelled corpus with hard negatives plus 90 adversarial mutation variants; the benchmark runs in CI and fails the build if recall drops.
 - Credential-shaped test values are assembled at run time, so the repository holds nothing a secret scanner would flag.
